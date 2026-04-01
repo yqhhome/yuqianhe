@@ -721,7 +721,7 @@ String _assembleJson({
     inbounds.insert(0, {
       'type': 'tun',
       'tag': 'tun-in',
-      'address': ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'],
+      'address': ['172.19.0.1/30'],
       'auto_route': true,
       'strict_route': true,
       'stack': 'system',
@@ -732,18 +732,10 @@ String _assembleJson({
     'final': 'proxy',
     'auto_detect_interface': includeTun && isAndroid ? true : !isAndroid,
     if (includeTun && isAndroid) 'override_android_vpn': true,
-    if (includeTun && isAndroid)
-      'rules': [
-        {
-          'network': 'udp',
-          'port': 443,
-          'outbound': 'block',
-        },
-      ],
   };
 
   final dns = <String, dynamic>{
-    'strategy': includeTun && isAndroid ? 'ipv4_only' : 'prefer_ipv4',
+    'strategy': 'prefer_ipv4',
     'servers': [
       if (includeTun && isAndroid)
         {
@@ -772,14 +764,13 @@ String _assembleJson({
     'inbounds': inbounds,
     'outbounds': [
       {'type': 'direct', 'tag': 'direct'},
-      if (includeTun && isAndroid) {'type': 'block', 'tag': 'block'},
       proxyOutbound,
     ],
     'route': route,
   };
 
   if (includeTun && isAndroid) {
-    route['default_domain_resolver'] = 'proxy-dns';
+    route['default_domain_resolver'] = 'local-dns';
   }
 
   return const JsonEncoder.withIndent('  ').convert(map);

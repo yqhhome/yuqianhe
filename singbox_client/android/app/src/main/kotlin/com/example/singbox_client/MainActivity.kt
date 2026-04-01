@@ -421,7 +421,6 @@ class MainActivity : FlutterActivity() {
                     }
                     if (address.length() == 0) {
                         address.put("172.19.0.1/30")
-                        address.put("fdfe:dcba:9876::1/126")
                     }
                     item.put("address", address)
                     item.remove("inet4_address")
@@ -439,7 +438,7 @@ class MainActivity : FlutterActivity() {
                 val tun = JSONObject()
                 tun.put("type", "tun")
                 tun.put("tag", "tun-in")
-                tun.put("address", JSONArray().put("172.19.0.1/30").put("fdfe:dcba:9876::1/126"))
+                tun.put("address", JSONArray().put("172.19.0.1/30"))
                 tun.put("auto_route", true)
                 tun.put("strict_route", true)
                 tun.put("stack", "system")

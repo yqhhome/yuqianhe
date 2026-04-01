@@ -433,31 +433,15 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
 
         if (options.autoRoute) {
-            val libboxDnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
-            val vpnDnsServers = linkedSetOf<String>()
-            val activeNetwork = defaultNetworkMonitor.require()
-            val activeDnsServers = runCatching {
-                connectivity.getLinkProperties(activeNetwork)
-                    ?.dnsServers
-                    ?.mapNotNull { it.hostAddress ?: it.hostName }
-                    .orEmpty()
-            }.getOrDefault(emptyList())
-            vpnDnsServers.addAll(activeDnsServers.filter { it.isNotBlank() })
-            if (vpnDnsServers.isEmpty()) {
-                vpnDnsServers.add("1.1.1.1")
-                vpnDnsServers.add("8.8.8.8")
+            val dnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
+            lastTunDnsServer = dnsServer
+            if (dnsServer.isNotEmpty()) {
+                builder.addDnsServer(dnsServer)
             }
-            for (server in vpnDnsServers) {
-                builder.addDnsServer(server)
-            }
-            lastTunDnsServer = buildString {
-                append("advertised=")
-                append(vpnDnsServers.joinToString(","))
-                if (libboxDnsServer.isNotEmpty()) {
-                    append(";libbox=")
-                    append(libboxDnsServer)
-                }
-            }
+            // Some Android browsers still fail DNS probing unless public resolvers
+            // are explicitly advertised by the VPN as fallbacks.
+            builder.addDnsServer("1.1.1.1")
+            builder.addDnsServer("8.8.8.8")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val inet4Routes = options.inet4RouteAddress
