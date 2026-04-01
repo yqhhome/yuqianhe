@@ -732,6 +732,14 @@ String _assembleJson({
     'final': 'proxy',
     'auto_detect_interface': includeTun && isAndroid ? true : !isAndroid,
     if (includeTun && isAndroid) 'override_android_vpn': true,
+    if (includeTun && isAndroid)
+      'rules': [
+        {
+          'network': 'udp',
+          'port': 443,
+          'outbound': 'block',
+        },
+      ],
   };
 
   final dns = <String, dynamic>{
@@ -764,6 +772,7 @@ String _assembleJson({
     'inbounds': inbounds,
     'outbounds': [
       {'type': 'direct', 'tag': 'direct'},
+      if (includeTun && isAndroid) {'type': 'block', 'tag': 'block'},
       proxyOutbound,
     ],
     'route': route,
