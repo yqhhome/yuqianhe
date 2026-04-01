@@ -14,6 +14,14 @@ singbox_client/android/app/src/main/jniLibs/*
 !singbox_client/android/app/src/main/jniLibs/armeabi-v7a/libsing-box.so
 !singbox_client/android/app/src/main/jniLibs/arm64-v8a/
 !singbox_client/android/app/src/main/jniLibs/arm64-v8a/libsing-box.so
-singbox_client/android/app/src/main/assets/singbox/
+!singbox_client/android/app/src/main/jniLibs/x86/
+!singbox_client/android/app/src/main/jniLibs/x86/libsing-box.so
+!singbox_client/android/app/src/main/jniLibs/x86_64/
+!singbox_client/android/app/src/main/jniLibs/x86_64/libsing-box.so
+singbox_client/android/app/src/main/assets/singbox/*
+!singbox_client/android/app/src/main/assets/singbox/sing-box-1.13.4-android-386.tar.gz
+!singbox_client/android/app/src/main/assets/singbox/sing-box-1.13.4-android-amd64.tar.gz
+!singbox_client/android/app/src/main/assets/singbox/sing-box-1.13.4-android-arm.tar.gz
+!singbox_client/android/app/src/main/assets/singbox/sing-box-1.13.4-android-arm64.tar.gz
 singbox_client/macos/Flutter/ephemeral/
 singbox_client/ios/Flutter/ephemeral/
