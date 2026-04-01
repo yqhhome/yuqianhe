@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -18,30 +19,7 @@ Future<(int, int)?> readMacNetworkBytes() async {
     return null;
   }
   if (Platform.isWindows) {
-    try {
-      final r = await Process.run('netstat', const ['-e']);
-      if (r.exitCode != 0) {
-        return null;
-      }
-      for (final raw in r.stdout.toString().split(RegExp(r'[\r\n]+'))) {
-        final line = raw.trim();
-        if (!line.startsWith('Bytes')) {
-          continue;
-        }
-        final cols = line.split(RegExp(r'\s+'));
-        if (cols.length < 3) {
-          continue;
-        }
-        final rx = int.tryParse(cols[1]);
-        final tx = int.tryParse(cols[2]);
-        if (rx != null && tx != null && rx >= 0 && tx >= 0) {
-          return (rx, tx);
-        }
-      }
-    } catch (_) {
-      return null;
-    }
-    return null;
+    return _readWindowsNetworkBytes();
   }
   if (!Platform.isMacOS) {
     return null;
@@ -116,6 +94,66 @@ Future<(int, int)?> readMacNetworkBytes() async {
     }
     return best;
   } catch (_) {}
+  return null;
+}
+
+Future<(int, int)?> _readWindowsNetworkBytes() async {
+  try {
+    const script = r'''
+$stats = Get-NetAdapterStatistics | Where-Object { $_.Name -notmatch '^Loopback|isatap|Teredo' } |
+  Select-Object ReceivedBytes, SentBytes
+if ($stats) {
+  $rx = ($stats | Measure-Object -Property ReceivedBytes -Sum).Sum
+  $tx = ($stats | Measure-Object -Property SentBytes -Sum).Sum
+  @{ rx = $rx; tx = $tx } | ConvertTo-Json -Compress
+}
+''';
+    for (final shell in const ['powershell', 'pwsh']) {
+      try {
+        final r = await Process.run(shell, const [
+          '-NoProfile',
+          '-NonInteractive',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          script,
+        ]);
+        if (r.exitCode != 0) {
+          continue;
+        }
+        final text = r.stdout.toString().trim();
+        if (text.isEmpty) {
+          continue;
+        }
+        final data = jsonDecode(text);
+        if (data is Map) {
+          final rx = (data['rx'] as num?)?.toInt();
+          final tx = (data['tx'] as num?)?.toInt();
+          if (rx != null && tx != null && rx >= 0 && tx >= 0) {
+            return (rx, tx);
+          }
+        }
+      } catch (_) {
+        // try next shell
+      }
+    }
+    final fallback = await Process.run('netstat', const ['-e']);
+    if (fallback.exitCode == 0) {
+      for (final raw in fallback.stdout.toString().split(RegExp(r'[\r\n]+'))) {
+        final matches = RegExp(r'(\d+)').allMatches(raw).toList();
+        if (matches.length < 2) {
+          continue;
+        }
+        final rx = int.tryParse(matches[matches.length - 2].group(1)!);
+        final tx = int.tryParse(matches[matches.length - 1].group(1)!);
+        if (rx != null && tx != null && rx >= 0 && tx >= 0) {
+          return (rx, tx);
+        }
+      }
+    }
+  } catch (_) {
+    return null;
+  }
   return null;
 }
 

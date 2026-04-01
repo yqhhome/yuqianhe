@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/app_version.dart';
 import '../../core/proxy/sspanel_singbox_config.dart';
 import '../../core/network/system_speed_sampler.dart';
 import '../../core/singbox/singbox_state.dart';
@@ -799,6 +800,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         onPlans: plansAction,
         onLogout: _logout,
         isDark: theme.brightness == Brightness.dark,
+        versionLabel: kAppVersionLabel,
       ),
       bottomNavigationBar: const _BottomNavBar(),
       body: SafeArea(
@@ -984,6 +986,7 @@ class _MainMenuDrawer extends StatelessWidget {
     required this.onPlans,
     required this.onLogout,
     required this.isDark,
+    required this.versionLabel,
   });
 
   final VoidCallback onTheme;
@@ -992,6 +995,7 @@ class _MainMenuDrawer extends StatelessWidget {
   final VoidCallback onPlans;
   final VoidCallback onLogout;
   final bool isDark;
+  final String versionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1048,6 +1052,18 @@ class _MainMenuDrawer extends StatelessWidget {
               onTap: () => tap(onPlans),
             ),
             const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '版本号 $versionLabel',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                  ),
+                ),
+              ),
+            ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout_outlined),

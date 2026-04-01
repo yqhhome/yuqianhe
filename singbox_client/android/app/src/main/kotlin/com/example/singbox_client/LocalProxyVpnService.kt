@@ -29,6 +29,9 @@ import io.nekohasekai.libbox.ExchangeContext
 import io.nekohasekai.libbox.InterfaceUpdateListener
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.LocalDNSTransport
+import io.nekohasekai.libbox.NeighborEntry
+import io.nekohasekai.libbox.NeighborEntryIterator
+import io.nekohasekai.libbox.NeighborUpdateListener
 import io.nekohasekai.libbox.NetworkInterfaceIterator
 import io.nekohasekai.libbox.Notification as LibboxNotification
 import io.nekohasekai.libbox.OverrideOptions
@@ -165,6 +168,7 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
     private fun startEngine(configPath: String) {
         thread(name = "yuqianhe-libbox-start") {
             try {
+                lastError = null
                 ensureLibboxSetup()
                 defaultNetworkMonitor.start()
                 val server = ensureCommandServer()
@@ -310,6 +314,9 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun closeDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
         defaultNetworkMonitor.setListener(null)
+    }
+
+    override fun closeNeighborMonitor(listener: NeighborUpdateListener) {
     }
 
     override fun findConnectionOwner(
@@ -515,6 +522,10 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
         return WIFIState(ssid, wifiInfo.bssid ?: "")
     }
 
+    override fun registerMyInterface(interfaceName: String) {
+        lastUpstreamInterface = interfaceName
+    }
+
     override fun sendNotification(notification: LibboxNotification) {
         val title = notification.title.ifEmpty { "宇千鹤通知" }
         val body = notification.body.ifEmpty { notification.subtitle ?: "" }
@@ -527,6 +538,10 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
         defaultNetworkMonitor.setListener(listener)
+    }
+
+    override fun startNeighborMonitor(listener: NeighborUpdateListener) {
+        listener.updateNeighborTable(EmptyNeighborEntryIterator)
     }
 
     override fun systemCertificates(): StringIterator {
@@ -560,7 +575,21 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun serviceReload() {
         val path = currentConfigPath ?: return
-        startEngine(path)
+        thread(name = "yuqianhe-libbox-reload") {
+            try {
+                val server = ensureCommandServer()
+                server.startOrReloadService(
+                    File(path).readText(),
+                    OverrideOptions().apply {
+                        autoRedirect = false
+                    },
+                )
+                lastError = null
+            } catch (e: Exception) {
+                lastError = e.message ?: e.toString()
+                Log.e(TAG, "serviceReload failed", e)
+            }
+        }
     }
 
     override fun serviceStop() {
@@ -594,6 +623,11 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
         override fun hasNext(): Boolean = index < items.size
 
         override fun next(): LibboxNetworkInterface = items[index++]
+    }
+
+    private object EmptyNeighborEntryIterator : NeighborEntryIterator {
+        override fun hasNext(): Boolean = false
+        override fun next(): NeighborEntry = throw NoSuchElementException("no neighbor entries")
     }
 
     private fun InterfaceAddress.toPrefix(): String? {
