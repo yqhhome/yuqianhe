@@ -17,6 +17,32 @@ Future<(int, int)?> readMacNetworkBytes() async {
     }
     return null;
   }
+  if (Platform.isWindows) {
+    try {
+      final r = await Process.run('netstat', const ['-e']);
+      if (r.exitCode != 0) {
+        return null;
+      }
+      for (final raw in r.stdout.toString().split(RegExp(r'[\r\n]+'))) {
+        final line = raw.trim();
+        if (!line.startsWith('Bytes')) {
+          continue;
+        }
+        final cols = line.split(RegExp(r'\s+'));
+        if (cols.length < 3) {
+          continue;
+        }
+        final rx = int.tryParse(cols[1]);
+        final tx = int.tryParse(cols[2]);
+        if (rx != null && tx != null && rx >= 0 && tx >= 0) {
+          return (rx, tx);
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
   if (!Platform.isMacOS) {
     return null;
   }

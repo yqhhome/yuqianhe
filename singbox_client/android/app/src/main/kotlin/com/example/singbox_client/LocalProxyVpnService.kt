@@ -29,8 +29,6 @@ import io.nekohasekai.libbox.ExchangeContext
 import io.nekohasekai.libbox.InterfaceUpdateListener
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.LocalDNSTransport
-import io.nekohasekai.libbox.NeighborEntryIterator
-import io.nekohasekai.libbox.NeighborUpdateListener
 import io.nekohasekai.libbox.NetworkInterfaceIterator
 import io.nekohasekai.libbox.Notification as LibboxNotification
 import io.nekohasekai.libbox.OverrideOptions
@@ -314,9 +312,6 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
         defaultNetworkMonitor.setListener(null)
     }
 
-    override fun closeNeighborMonitor(listener: NeighborUpdateListener) {
-    }
-
     override fun findConnectionOwner(
         ipProtocol: Int,
         sourceAddress: String,
@@ -520,9 +515,6 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
         return WIFIState(ssid, wifiInfo.bssid ?: "")
     }
 
-    override fun registerMyInterface(name: String?) {
-    }
-
     override fun sendNotification(notification: LibboxNotification) {
         val title = notification.title.ifEmpty { "宇千鹤通知" }
         val body = notification.body.ifEmpty { notification.subtitle ?: "" }
@@ -535,9 +527,6 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
         defaultNetworkMonitor.setListener(listener)
-    }
-
-    override fun startNeighborMonitor(listener: NeighborUpdateListener?) {
     }
 
     override fun systemCertificates(): StringIterator {
