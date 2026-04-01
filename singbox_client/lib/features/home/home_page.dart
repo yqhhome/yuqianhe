@@ -1,4 +1,5 @@
 import 'dart:async' show Future, Timer, TimeoutException, unawaited;
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -403,33 +404,47 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<String?> _probeGoogleViaLocalProxy() async {
+  Future<String?> _probeFacebookViaLocalProxy() async {
     final client = HttpClient();
     client.findProxy = (uri) => 'PROXY $kSingboxMixedHost:$kSingboxMixedPort';
     client.connectionTimeout = const Duration(seconds: 8);
     try {
       final req = await client
-          .getUrl(Uri.parse('https://www.google.com/'))
+          .getUrl(Uri.parse('https://www.facebook.com/'))
           .timeout(const Duration(seconds: 10));
       req.followRedirects = true;
       req.maxRedirects = 8;
-      req.headers.set(HttpHeaders.userAgentHeader, 'yuqianhe-google-probe');
+      req.headers.set(HttpHeaders.userAgentHeader, 'yuqianhe-facebook-probe');
       final res = await req.close().timeout(const Duration(seconds: 12));
       final status = res.statusCode;
       final finalUri = res.redirects.isNotEmpty ? res.redirects.last.location : req.uri;
-      await res.drain<void>();
+      final bodyBytes = await res.fold<List<int>>(<int>[], (prev, data) {
+        prev.addAll(data);
+        return prev;
+      });
+      final body = utf8.decode(bodyBytes, allowMalformed: true);
+      final bodyLower = body.toLowerCase();
+      final contentLooksLikeFacebook = bodyLower.contains('facebook');
       if (status >= 200 && status < 400) {
-        return null;
+        if (contentLooksLikeFacebook) {
+          return null;
+        }
+        final preview = body.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
+        return 'Facebook 探测失败：页面内容不符合预期\n'
+            'HTTP=$status\n'
+            'finalUri=$finalUri\n'
+            'proxy=$kSingboxMixedHost:$kSingboxMixedPort\n'
+            'bodyPreview=${preview.length > 300 ? preview.substring(0, 300) : preview}';
       }
-      return 'Google 探测失败：HTTP $status\n'
+      return 'Facebook 探测失败：HTTP $status\n'
           'finalUri=$finalUri\n'
           'proxy=$kSingboxMixedHost:$kSingboxMixedPort';
     } on TimeoutException catch (e) {
-      return 'Google 探测超时：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
+      return 'Facebook 探测超时：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
     } on SocketException catch (e) {
-      return 'Google 探测 SocketException：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
+      return 'Facebook 探测 SocketException：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
     } catch (e, st) {
-      return 'Google 探测异常：$e\n'
+      return 'Facebook 探测异常：$e\n'
           'proxy=$kSingboxMixedHost:$kSingboxMixedPort\n'
           'stack:\n$st';
     } finally {
@@ -437,14 +452,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _showGoogleProbeError(String details) async {
+  Future<void> _showFacebookProbeError(String details) async {
     if (!mounted) {
       return;
     }
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('访问google失败'),
+        title: const Text('访问Facebook失败'),
         content: SingleChildScrollView(
           child: SelectableText(details),
         ),
@@ -560,19 +575,19 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     }
     if (showSuccessSnack && mounted && after.phase == SingboxRunPhase.running) {
-      final probeError = await _probeGoogleViaLocalProxy();
+      final probeError = await _probeFacebookViaLocalProxy();
       if (!mounted) {
         return false;
       }
       if (probeError == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('访问google成功'),
+            content: Text('访问Facebook成功'),
             duration: Duration(seconds: 5),
           ),
         );
       } else {
-        await _showGoogleProbeError(probeError);
+        await _showFacebookProbeError(probeError);
       }
     }
     return after.phase == SingboxRunPhase.running;
