@@ -1,0 +1,14 @@
+.DS_Store
+singbox_client/.dart_tool/
+singbox_client/build/
+singbox_client/dist/
+singbox_client/.build-tools/
+singbox_client/.idea/
+singbox_client/android/.gradle/
+singbox_client/android/.kotlin/
+singbox_client/android/local.properties
+singbox_client/android/app/libs/
+singbox_client/android/app/src/main/jniLibs/
+singbox_client/android/app/src/main/assets/singbox/
+singbox_client/macos/Flutter/ephemeral/
+singbox_client/ios/Flutter/ephemeral/

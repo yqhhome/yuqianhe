@@ -1,0 +1,186 @@
+name: Build Clients
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-clients-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    env:
+      SINGBOX_VERSION: "1.13.4"
+    defaults:
+      run:
+        working-directory: singbox_client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "^1.25.4"
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Prepare Android native dependencies
+        run: bash scripts/prepare_android_ci.sh
+
+      - name: Fetch Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Android release APK
+        run: flutter build apk --release
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: singbox_client/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: singbox_client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Build unsigned macOS archives
+        env:
+          SINGBOX_VERSION: "1.13.4"
+        run: bash scripts/build_macos_release.sh
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-zips
+          path: |
+            singbox_client/dist/macos/宇千鹤-arm64.zip
+            singbox_client/dist/macos/宇千鹤-x86_64.zip
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    env:
+      SINGBOX_VERSION: "1.13.4"
+    defaults:
+      run:
+        working-directory: singbox_client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Fetch Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows release bundle
+        run: flutter build windows --release
+
+      - name: Bundle sing-box.exe
+        shell: pwsh
+        run: |
+          $zipName = "sing-box-$env:SINGBOX_VERSION-windows-amd64.zip"
+          $url = "https://github.com/SagerNet/sing-box/releases/download/v$env:SINGBOX_VERSION/$zipName"
+          $tempDir = Join-Path $env:RUNNER_TEMP "sing-box-windows"
+          Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+          $zipPath = Join-Path $tempDir $zipName
+          curl.exe -L --fail $url -o $zipPath
+          Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force
+          $bundleDir = Join-Path $tempDir "sing-box-$env:SINGBOX_VERSION-windows-amd64"
+          Get-ChildItem -Path $bundleDir -File | Where-Object { $_.Name -ne 'LICENSE' } | Copy-Item -Destination build/windows/x64/runner/Release -Force
+
+      - name: Package Windows artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist/windows | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath dist/windows/宇千鹤-windows-x64.zip -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-zip
+          path: singbox_client/dist/windows/宇千鹤-windows-x64.zip
+          if-no-files-found: error
+
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: singbox_client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable iOS platform
+        run: flutter config --enable-ios
+
+      - name: Fetch Flutter dependencies
+        run: flutter pub get
+
+      - name: Build unsigned iOS app
+        run: flutter build ios --release --no-codesign
+
+      - name: Package iOS artifact
+        run: |
+          mkdir -p dist/ios
+          ditto -c -k --sequesterRsrc --keepParent build/ios/iphoneos/Runner.app dist/ios/宇千鹤-ios-unsigned.zip
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-zip
+          path: singbox_client/dist/ios/宇千鹤-ios-unsigned.zip
+          if-no-files-found: error
