@@ -9,7 +9,11 @@ singbox_client/android/.kotlin/
 singbox_client/android/local.properties
 singbox_client/android/app/libs/*
 !singbox_client/android/app/libs/libbox.aar
-singbox_client/android/app/src/main/jniLibs/
+singbox_client/android/app/src/main/jniLibs/*
+!singbox_client/android/app/src/main/jniLibs/armeabi-v7a/
+!singbox_client/android/app/src/main/jniLibs/armeabi-v7a/libsing-box.so
+!singbox_client/android/app/src/main/jniLibs/arm64-v8a/
+!singbox_client/android/app/src/main/jniLibs/arm64-v8a/libsing-box.so
 singbox_client/android/app/src/main/assets/singbox/
 singbox_client/macos/Flutter/ephemeral/
 singbox_client/ios/Flutter/ephemeral/

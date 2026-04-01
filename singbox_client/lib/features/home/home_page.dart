@@ -34,12 +34,14 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   static const Duration _userStatsCacheTtl = Duration(minutes: 60);
   static const Duration _connectedStatsRefreshInterval = Duration(minutes: 60);
+  static const Duration _powerActionMinLockDuration = Duration(milliseconds: 1200);
 
   Timer? _connTimer;
   Timer? _androidDiagnoseTimer;
   Timer? _accountStatusTimer;
   bool _androidDiagnoseShown = false;
   bool _accessBlockedDialogOpen = false;
+  bool _powerActionLocked = false;
   DateTime? _lastUserStatsRefreshAt;
   DateTime? _connectedAt;
   Duration _elapsed = Duration.zero;
@@ -616,14 +618,36 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _powerTap(SingboxRunPhase phase) async {
-    final c = ref.read(singboxControllerProvider);
-
-    if (phase == SingboxRunPhase.running || phase == SingboxRunPhase.starting) {
-      await applySingboxGlobalHttpProxy(enable: false);
-      await c.stop();
+    if (_powerActionLocked ||
+        phase == SingboxRunPhase.starting ||
+        phase == SingboxRunPhase.stopping) {
       return;
     }
-    await _connectSelectedNode(showSuccessSnack: true);
+    final c = ref.read(singboxControllerProvider);
+    final startedAt = DateTime.now();
+    if (mounted) {
+      setState(() {
+        _powerActionLocked = true;
+      });
+    }
+    try {
+      if (phase == SingboxRunPhase.running) {
+        await applySingboxGlobalHttpProxy(enable: false);
+        await c.stop();
+        return;
+      }
+      await _connectSelectedNode(showSuccessSnack: true);
+    } finally {
+      final remaining = _powerActionMinLockDuration - DateTime.now().difference(startedAt);
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+      }
+      if (mounted) {
+        setState(() {
+          _powerActionLocked = false;
+        });
+      }
+    }
   }
 
   void _cycleTheme() {
@@ -870,6 +894,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                           statusNodeName: selectedNode?.name,
                           currentNodeStatus: currentNodeStatus,
                           onPower: () => _powerTap(phase),
+                          powerLocked: _powerActionLocked,
                           onRefreshTraffic: _refreshAll,
                           onOpenNodes: _openAllNodesSheet,
                           globalProxy: uiPrefs.globalProxy,
@@ -1090,6 +1115,7 @@ class _DashboardPanel extends StatefulWidget {
     required this.statusNodeName,
     required this.currentNodeStatus,
     required this.onPower,
+    required this.powerLocked,
     required this.onRefreshTraffic,
     required this.onOpenNodes,
     required this.globalProxy,
@@ -1110,6 +1136,7 @@ class _DashboardPanel extends StatefulWidget {
   final String? statusNodeName;
   final (String, Color, IconData) currentNodeStatus;
   final VoidCallback onPower;
+  final bool powerLocked;
   final VoidCallback onRefreshTraffic;
   final VoidCallback onOpenNodes;
   final bool globalProxy;
@@ -1163,7 +1190,9 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final running = widget.phase == SingboxRunPhase.running;
-    final busy = widget.phase == SingboxRunPhase.starting || widget.phase == SingboxRunPhase.stopping;
+    final busy = widget.powerLocked ||
+        widget.phase == SingboxRunPhase.starting ||
+        widget.phase == SingboxRunPhase.stopping;
     final status = running
         ? '已连接'
         : widget.phase == SingboxRunPhase.error

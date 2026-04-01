@@ -9,13 +9,20 @@ fi
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LIBS_DIR="$ROOT_DIR/android/app/libs"
 JNI_DIR="$ROOT_DIR/android/app/src/main/jniLibs"
+ARM32_SO="$JNI_DIR/armeabi-v7a/libsing-box.so"
+ARM64_SO="$JNI_DIR/arm64-v8a/libsing-box.so"
 
 mkdir -p "$LIBS_DIR" "$JNI_DIR/armeabi-v7a" "$JNI_DIR/arm64-v8a"
-rm -f "$JNI_DIR/armeabi-v7a/libsing-box.so" "$JNI_DIR/arm64-v8a/libsing-box.so"
 
 if [[ ! -f "$LIBS_DIR/libbox.aar" ]]; then
   echo "vendored libbox.aar is missing: $LIBS_DIR/libbox.aar" >&2
   exit 1
+fi
+
+if [[ -s "$ARM32_SO" && -s "$ARM64_SO" ]]; then
+  chmod 755 "$ARM32_SO" "$ARM64_SO"
+  echo "Using vendored Android native binaries from jniLibs."
+  exit 0
 fi
 
 TMP_DIR="$(mktemp -d)"
