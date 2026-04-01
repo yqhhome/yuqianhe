@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_version.dart';
 import '../../core/proxy/sspanel_singbox_config.dart';
 import '../../core/network/system_speed_sampler.dart';
+import '../../core/singbox/platform_info.dart';
 import '../../core/singbox/singbox_state.dart';
 import '../../core/singbox/system_proxy.dart';
 import '../../core/singbox/tun_inbound_support.dart';
@@ -374,6 +375,44 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Future<void> _showAndroidRuntimeDiagnosis() async {
+    if (!mounted || !isAndroid) {
+      return;
+    }
+    try {
+      const ch = MethodChannel('yuqianhe/singbox_android');
+      final map = await ch.invokeMethod('diagnose').timeout(const Duration(seconds: 8));
+      final text = map is Map
+          ? map.entries.map((e) => '${e.key}=${e.value}').join('\n')
+          : '$map';
+      if (!mounted) {
+        return;
+      }
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Android 运行诊断'),
+          content: SingleChildScrollView(
+            child: SelectableText(text),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('关闭'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('获取 Android 运行诊断失败：$e')),
+      );
+    }
+  }
+
   String _fmtDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60);
@@ -482,6 +521,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           duration: Duration(seconds: 5),
         ),
       );
+    }
+    if (after.phase == SingboxRunPhase.running && isAndroid && prefs.tunMode) {
+      await _showAndroidRuntimeDiagnosis();
     }
     return after.phase == SingboxRunPhase.running;
   }

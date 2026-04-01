@@ -2,6 +2,7 @@ package com.example.singbox_client
 
 import android.app.Activity
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.net.VpnService
 import android.net.TrafficStats
 import io.flutter.embedding.engine.FlutterEngine
@@ -12,6 +13,7 @@ import io.nekohasekai.libbox.Libbox
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.net.InetAddress
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -31,6 +33,9 @@ class MainActivity : FlutterActivity() {
 
     private var pendingVpnResult: MethodChannel.Result? = null
     private var pendingVpnConfigPath: String? = null
+    private val connectivity by lazy {
+        getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -206,8 +211,82 @@ class MainActivity : FlutterActivity() {
                 data["ensureOk"] = false
                 data["ensureError"] = "${e.javaClass.simpleName}: ${e.message ?: ""}"
             }
+            val activeNetwork = runCatching { connectivity.activeNetwork }.getOrNull()
+            val linkProperties = runCatching { connectivity.getLinkProperties(activeNetwork) }.getOrNull()
+            data["activeNetworkInterface"] = linkProperties?.interfaceName
+            data["activeDnsServers"] = linkProperties?.dnsServers
+                ?.mapNotNull { it.hostAddress ?: it.hostName }
+                ?.joinToString(",")
+                ?: ""
+            val configPath = LocalProxyVpnService.getCurrentConfigPath()
+            val configText = configPath?.let { path ->
+                runCatching { File(path).readText() }.getOrNull()
+            }
+            if (!configText.isNullOrBlank()) {
+                runCatching {
+                    val root = JSONObject(configText)
+                    val dns = root.optJSONObject("dns")
+                    val route = root.optJSONObject("route")
+                    data["dnsFinal"] = dns?.optString("final") ?: ""
+                    data["routeDefaultResolver"] = route?.optString("default_domain_resolver") ?: ""
+                    data["quicFallbackEnabled"] = hasUdp443Block(route?.optJSONArray("rules"))
+                }
+            }
+            data["resolveGoogle"] = resolveDomain("www.google.com")
+            data["resolveYouTube"] = resolveDomain("www.youtube.com")
+            data["resolveYouTubeApi"] = resolveDomain("youtubei.googleapis.com")
+            data["proxyGoogle204"] = probeUrlViaLocalProxy("https://www.google.com/generate_204")
+            data["proxyGoogleHome"] = probeUrlViaLocalProxy("https://www.google.com/")
+            data["proxyYouTubeHome"] = probeUrlViaLocalProxy("https://www.youtube.com/")
+            data["proxyYouTubeApi"] = probeUrlViaLocalProxy("https://youtubei.googleapis.com/")
             runOnUiThread { result.success(data) }
         }.start()
+    }
+
+    private fun hasUdp443Block(rules: JSONArray?): Boolean {
+        if (rules == null) {
+            return false
+        }
+        for (i in 0 until rules.length()) {
+            val item = rules.optJSONObject(i) ?: continue
+            if (item.optString("network") == "udp" &&
+                item.opt("port")?.toString() == "443" &&
+                item.optString("outbound") == "block"
+            ) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun resolveDomain(domain: String): String {
+        return try {
+            InetAddress.getAllByName(domain)
+                .mapNotNull { it.hostAddress }
+                .distinct()
+                .joinToString(",")
+                .ifBlank { "empty" }
+        } catch (e: Exception) {
+            "error:${e.javaClass.simpleName}:${e.message ?: ""}"
+        }
+    }
+
+    private fun probeUrlViaLocalProxy(target: String): String {
+        return try {
+            val proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", LIBBOX_MIXED_PORT))
+            val conn = URL(target).openConnection(proxy) as HttpURLConnection
+            conn.connectTimeout = 4000
+            conn.readTimeout = 5000
+            conn.instanceFollowRedirects = true
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "yuqianhe-android-runtime-diagnose")
+            val code = conn.responseCode
+            val finalUrl = conn.url?.toString() ?: target
+            conn.inputStream?.close()
+            "code=$code final=$finalUrl"
+        } catch (e: Exception) {
+            "error:${e.javaClass.simpleName}:${e.message ?: ""}"
+        }
     }
 
     private fun setSystemProxy(
