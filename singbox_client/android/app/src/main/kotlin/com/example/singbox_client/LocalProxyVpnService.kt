@@ -433,27 +433,31 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
 
         if (options.autoRoute) {
-            val dnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
+            val libboxDnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
             val vpnDnsServers = linkedSetOf<String>()
-            if (dnsServer.isNotEmpty()) {
-                vpnDnsServers.add(dnsServer)
-            } else {
-                val activeNetwork = defaultNetworkMonitor.require()
-                val activeDnsServers = runCatching {
-                    connectivity.getLinkProperties(activeNetwork)
-                        ?.dnsServers
-                        ?.mapNotNull { it.hostAddress ?: it.hostName }
-                        .orEmpty()
-                }.getOrDefault(emptyList())
-                vpnDnsServers.addAll(activeDnsServers.filter { it.isNotBlank() })
-                if (vpnDnsServers.isEmpty()) {
-                    vpnDnsServers.add("1.1.1.1")
-                }
+            val activeNetwork = defaultNetworkMonitor.require()
+            val activeDnsServers = runCatching {
+                connectivity.getLinkProperties(activeNetwork)
+                    ?.dnsServers
+                    ?.mapNotNull { it.hostAddress ?: it.hostName }
+                    .orEmpty()
+            }.getOrDefault(emptyList())
+            vpnDnsServers.addAll(activeDnsServers.filter { it.isNotBlank() })
+            if (vpnDnsServers.isEmpty()) {
+                vpnDnsServers.add("1.1.1.1")
+                vpnDnsServers.add("8.8.8.8")
             }
             for (server in vpnDnsServers) {
                 builder.addDnsServer(server)
             }
-            lastTunDnsServer = vpnDnsServers.joinToString(",")
+            lastTunDnsServer = buildString {
+                append("advertised=")
+                append(vpnDnsServers.joinToString(","))
+                if (libboxDnsServer.isNotEmpty()) {
+                    append(";libbox=")
+                    append(libboxDnsServer)
+                }
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val inet4Routes = options.inet4RouteAddress
