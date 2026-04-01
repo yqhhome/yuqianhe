@@ -9,18 +9,13 @@ fi
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LIBS_DIR="$ROOT_DIR/android/app/libs"
 JNI_DIR="$ROOT_DIR/android/app/src/main/jniLibs"
-PARTS_DIR="$ROOT_DIR/android/app/libbox_parts"
 
 mkdir -p "$LIBS_DIR" "$JNI_DIR/armeabi-v7a" "$JNI_DIR/arm64-v8a"
 rm -f "$JNI_DIR/armeabi-v7a/libsing-box.so" "$JNI_DIR/arm64-v8a/libsing-box.so"
 
 if [[ ! -f "$LIBS_DIR/libbox.aar" ]]; then
-  if compgen -G "$PARTS_DIR/libbox.aar.part-*" >/dev/null; then
-    cat "$PARTS_DIR"/libbox.aar.part-* > "$LIBS_DIR/libbox.aar"
-  else
-    echo "vendored libbox.aar is missing: $LIBS_DIR/libbox.aar" >&2
-    exit 1
-  fi
+  echo "vendored libbox.aar is missing: $LIBS_DIR/libbox.aar" >&2
+  exit 1
 fi
 
 TMP_DIR="$(mktemp -d)"

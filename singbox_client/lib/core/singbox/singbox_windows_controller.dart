@@ -108,6 +108,34 @@ class SingboxWindowsController implements SingboxController {
   bool _userStop = false;
   final StringBuffer _stderrTail = StringBuffer();
 
+  Future<void> _terminateProcess(Process proc) async {
+    final pid = proc.pid;
+    if (pid > 0) {
+      try {
+        final result = await Process.run(
+          'taskkill',
+          ['/PID', '$pid', '/T', '/F'],
+          runInShell: true,
+        );
+        if (result.exitCode == 0) {
+          try {
+            await proc.exitCode.timeout(const Duration(seconds: 6));
+          } catch (_) {}
+          return;
+        }
+      } catch (_) {
+        // Fallback to direct kill below.
+      }
+    }
+    try {
+      proc.kill(ProcessSignal.sigterm);
+      await proc.exitCode.timeout(const Duration(seconds: 4), onTimeout: () {
+        proc.kill(ProcessSignal.sigkill);
+        return -1;
+      });
+    } catch (_) {}
+  }
+
   void _emit(SingboxState s) {
     _current = s;
     if (!_controller.isClosed) {
@@ -327,11 +355,7 @@ class SingboxWindowsController implements SingboxController {
         }
         _userStop = true;
         try {
-          proc.kill();
-          await proc.exitCode.timeout(const Duration(seconds: 5), onTimeout: () {
-            proc.kill();
-            return -1;
-          });
+          await _terminateProcess(proc);
         } catch (_) {}
         await _errSub?.cancel();
         _errSub = null;
@@ -367,11 +391,7 @@ class SingboxWindowsController implements SingboxController {
     }
     _emit(const SingboxState(phase: SingboxRunPhase.stopping));
     try {
-      proc.kill();
-      await proc.exitCode.timeout(const Duration(seconds: 4), onTimeout: () {
-        proc.kill();
-        return -1;
-      });
+      await _terminateProcess(proc);
     } catch (_) {}
     await _errSub?.cancel();
     _errSub = null;
