@@ -750,6 +750,19 @@ String _assembleJson({
           },
           'detour': 'proxy',
         },
+      if (includeTun && isAndroid)
+        {
+          'type': 'https',
+          'tag': 'proxy-dns-backup',
+          'server': '8.8.8.8',
+          'server_port': 443,
+          'path': '/dns-query',
+          'tls': {
+            'enabled': true,
+            'server_name': 'dns.google',
+          },
+          'detour': 'proxy',
+        },
       {
         'type': 'local',
         'tag': 'local-dns',
@@ -770,7 +783,7 @@ String _assembleJson({
   };
 
   if (includeTun && isAndroid) {
-    route['default_domain_resolver'] = 'local-dns';
+    route['default_domain_resolver'] = 'proxy-dns';
   }
 
   return const JsonEncoder.withIndent('  ').convert(map);
