@@ -434,14 +434,26 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
         if (options.autoRoute) {
             val dnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
+            val vpnDnsServers = linkedSetOf<String>()
             if (dnsServer.isNotEmpty()) {
-                builder.addDnsServer(dnsServer)
+                vpnDnsServers.add(dnsServer)
+            } else {
+                val activeNetwork = defaultNetworkMonitor.require()
+                val activeDnsServers = runCatching {
+                    connectivity.getLinkProperties(activeNetwork)
+                        ?.dnsServers
+                        ?.mapNotNull { it.hostAddress ?: it.hostName }
+                        .orEmpty()
+                }.getOrDefault(emptyList())
+                vpnDnsServers.addAll(activeDnsServers.filter { it.isNotBlank() })
+                if (vpnDnsServers.isEmpty()) {
+                    vpnDnsServers.add("1.1.1.1")
+                }
             }
-            // Keep public resolvers only as a last resort fallback; in CN networks,
-            // exposing them as primary system DNS can still be unstable.
-            builder.addDnsServer("1.1.1.1")
-            builder.addDnsServer("8.8.8.8")
-            lastTunDnsServer = if (dnsServer.isNotEmpty()) "$dnsServer,1.1.1.1,8.8.8.8" else "1.1.1.1,8.8.8.8"
+            for (server in vpnDnsServers) {
+                builder.addDnsServer(server)
+            }
+            lastTunDnsServer = vpnDnsServers.joinToString(",")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val inet4Routes = options.inet4RouteAddress
