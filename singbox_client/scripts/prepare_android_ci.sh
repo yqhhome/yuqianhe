@@ -11,6 +11,14 @@ if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
   exit 1
 fi
 
+if [[ ! -f "${ANDROID_NDK_HOME}/source.properties" ]]; then
+  echo "ANDROID_NDK_HOME is invalid: ${ANDROID_NDK_HOME}" >&2
+  exit 1
+fi
+
+export ANDROID_NDK_ROOT="${ANDROID_NDK_ROOT:-$ANDROID_NDK_HOME}"
+export NDK="${NDK:-$ANDROID_NDK_HOME}"
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WORK_DIR="${RUNNER_TEMP:-$ROOT_DIR/.ci-tmp}/sing-box-upstream"
 LIBS_DIR="$ROOT_DIR/android/app/libs"
