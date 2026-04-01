@@ -404,10 +404,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<String?> _probeFacebookViaLocalProxy() async {
+  Future<String?> _probeFacebook({
+    required bool useLocalProxy,
+  }) async {
     final client = HttpClient();
-    client.findProxy = (uri) => 'PROXY $kSingboxMixedHost:$kSingboxMixedPort';
+    if (useLocalProxy) {
+      client.findProxy = (uri) => 'PROXY $kSingboxMixedHost:$kSingboxMixedPort';
+    }
     client.connectionTimeout = const Duration(seconds: 8);
+    final mode = useLocalProxy ? 'local-proxy' : 'direct';
     try {
       final req = await client
           .getUrl(Uri.parse('https://www.facebook.com/'))
@@ -424,28 +429,39 @@ class _HomePageState extends ConsumerState<HomePage> {
       });
       final body = utf8.decode(bodyBytes, allowMalformed: true);
       final bodyLower = body.toLowerCase();
-      final contentLooksLikeFacebook = bodyLower.contains('facebook');
+      final contentLooksLikeFacebook = bodyLower.contains('facebook') &&
+          (bodyLower.contains('log into facebook') ||
+              bodyLower.contains('<title>facebook') ||
+              bodyLower.contains('meta ©') ||
+              bodyLower.contains('meta pay'));
       if (status >= 200 && status < 400) {
         if (contentLooksLikeFacebook) {
           return null;
         }
         final preview = body.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
         return 'Facebook 探测失败：页面内容不符合预期\n'
+            'mode=$mode\n'
             'HTTP=$status\n'
             'finalUri=$finalUri\n'
-            'proxy=$kSingboxMixedHost:$kSingboxMixedPort\n'
+            'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}\n'
             'bodyPreview=${preview.length > 300 ? preview.substring(0, 300) : preview}';
       }
       return 'Facebook 探测失败：HTTP $status\n'
+          'mode=$mode\n'
           'finalUri=$finalUri\n'
-          'proxy=$kSingboxMixedHost:$kSingboxMixedPort';
+          'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}';
     } on TimeoutException catch (e) {
-      return 'Facebook 探测超时：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
+      return 'Facebook 探测超时：$e\n'
+          'mode=$mode\n'
+          'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}';
     } on SocketException catch (e) {
-      return 'Facebook 探测 SocketException：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
+      return 'Facebook 探测 SocketException：$e\n'
+          'mode=$mode\n'
+          'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}';
     } catch (e, st) {
       return 'Facebook 探测异常：$e\n'
-          'proxy=$kSingboxMixedHost:$kSingboxMixedPort\n'
+          'mode=$mode\n'
+          'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}\n'
           'stack:\n$st';
     } finally {
       client.close(force: true);
@@ -575,17 +591,27 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     }
     if (showSuccessSnack && mounted && after.phase == SingboxRunPhase.running) {
-      final probeError = await _probeFacebookViaLocalProxy();
+      final useLocalProxyForProbe = !prefs.tunMode;
+      final probeError = await _probeFacebook(useLocalProxy: useLocalProxyForProbe);
       if (!mounted) {
         return false;
       }
       if (probeError == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('访问Facebook成功'),
-            duration: Duration(seconds: 5),
-          ),
-        );
+        if (isAndroid && !prefs.tunMode) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('访问Facebook成功（仅本地代理探测）。Android 浏览器请开启 TUN 模式后再测。'),
+              duration: Duration(seconds: 7),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('访问Facebook成功'),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
       } else {
         await _showFacebookProbeError(probeError);
       }
