@@ -39,7 +39,8 @@ Map<String, String> parseVlessRealityServer(String node) {
       final pbk = m['pbk'] ?? m['public_key'] ?? '';
       final sid = m['sid'] ?? m['short_id'] ?? m['shortId'] ?? '';
       final sni = m['sni'] ?? m['server_name'] ?? '';
-      final fp = m['fp'] ?? m['fingerprint'] ?? m['client_fingerprint'] ?? 'chrome';
+      final fp =
+          m['fp'] ?? m['fingerprint'] ?? m['client_fingerprint'] ?? 'chrome';
       final type = m['type'] ?? m['net'] ?? m['network'] ?? 'tcp';
       return {
         'add': add,
@@ -65,12 +66,17 @@ Map<String, String> parseVlessRealityServer(String node) {
   final pbk = pbk2.isNotEmpty ? pbk2 : pk10;
   return {
     'add': server.isNotEmpty ? server[0].trim() : '',
-    'port': server.length > 1 && server[1].isNotEmpty ? server[1].trim() : '443',
+    'port':
+        server.length > 1 && server[1].isNotEmpty ? server[1].trim() : '443',
     'pbk': pbk,
     'sid': server.length > 3 ? server[3].trim() : '',
     'sni': server.length > 4 ? server[4].trim() : '',
-    'fp': server.length > 5 && server[5].trim().isNotEmpty ? server[5].trim() : 'chrome',
-    'type': server.length > 6 && server[6].trim().isNotEmpty ? server[6].trim() : 'tcp',
+    'fp': server.length > 5 && server[5].trim().isNotEmpty
+        ? server[5].trim()
+        : 'chrome',
+    'type': server.length > 6 && server[6].trim().isNotEmpty
+        ? server[6].trim()
+        : 'tcp',
     'flow': server.length > 7 ? server[7].trim() : '',
     'host': server.length > 8 ? server[8].trim() : '',
     'path': server.length > 9 ? server[9].trim() : '',
@@ -184,7 +190,8 @@ Map<String, dynamic> parseV2Array(String node) {
       item.remove('server');
     }
     if (item.containsKey('outside_port')) {
-      item['port'] = int.tryParse(item['outside_port'].toString()) ?? item['port'];
+      item['port'] =
+          int.tryParse(item['outside_port'].toString()) ?? item['port'];
       item.remove('outside_port');
     }
   }
@@ -200,7 +207,8 @@ Map<String, dynamic> parseV2Array(String node) {
   switch (node.sort) {
     case 0:
     case 10:
-      final host = _legacySsHost(raw ?? '') ?? _legacySsHost(node.serverDisplay ?? '');
+      final host =
+          _legacySsHost(raw ?? '') ?? _legacySsHost(node.serverDisplay ?? '');
       if (host == null || host.isEmpty) {
         return null;
       }
@@ -254,7 +262,9 @@ Map<String, dynamic> parseV2Array(String node) {
       );
     default:
       final byRawMap = _genericPingTargetFromMap(node.rawData);
-      return byRawMap ?? _genericPingTarget(node.serverDisplay) ?? _genericPingTarget(raw);
+      return byRawMap ??
+          _genericPingTarget(node.serverDisplay) ??
+          _genericPingTarget(raw);
   }
 }
 
@@ -264,18 +274,23 @@ Map<String, dynamic> parseV2Array(String node) {
   }
   final rawNode = map['raw_node'];
   if (rawNode is Map) {
-    final nested = _genericPingTargetFromMap(Map<String, dynamic>.from(rawNode));
+    final nested =
+        _genericPingTargetFromMap(Map<String, dynamic>.from(rawNode));
     if (nested != null) {
       return nested;
     }
   }
-  final host = (map['add'] ?? map['server'] ?? map['address'] ?? map['host'] ?? '')
-      .toString()
-      .trim();
+  final host =
+      (map['add'] ?? map['server'] ?? map['address'] ?? map['host'] ?? '')
+          .toString()
+          .trim();
   if (host.isEmpty || host.contains('*')) {
     return null;
   }
-  final port = int.tryParse((map['outside_port'] ?? map['server_port'] ?? map['port'] ?? '443').toString()) ?? 443;
+  final port = int.tryParse(
+          (map['outside_port'] ?? map['server_port'] ?? map['port'] ?? '443')
+              .toString()) ??
+      443;
   return (host: host, port: port);
 }
 
@@ -288,12 +303,13 @@ Map<String, dynamic> parseV2Array(String node) {
     final decoded = jsonDecode(trimmed);
     if (decoded is Map) {
       final map = Map<String, dynamic>.from(decoded);
-      final host = (map['add'] ?? map['server'] ?? map['host'] ?? '').toString().trim();
+      final host =
+          (map['add'] ?? map['server'] ?? map['host'] ?? '').toString().trim();
       if (host.isEmpty || host.contains('*')) {
         return null;
       }
-      final port =
-          int.tryParse((map['outside_port'] ?? map['port'] ?? '443').toString()) ??
+      final port = int.tryParse(
+              (map['outside_port'] ?? map['port'] ?? '443').toString()) ??
           443;
       return (host: host, port: port);
     }
@@ -309,7 +325,9 @@ Map<String, dynamic> parseV2Array(String node) {
 
 class SingboxConfigResult {
   const SingboxConfigResult.ok(this.json) : errorMessage = null;
-  const SingboxConfigResult.err(String msg) : json = null, errorMessage = msg;
+  const SingboxConfigResult.err(String msg)
+      : json = null,
+        errorMessage = msg;
 
   final String? json;
   final String? errorMessage;
@@ -325,7 +343,8 @@ SingboxConfigResult buildSingboxConfigForPanelNode({
 }) {
   final raw = node.rawServer;
   if (raw == null || raw.trim().isEmpty) {
-    return const SingboxConfigResult.err('节点缺少完整服务端配置（raw_node.server），请确认面板返回或升级面板。');
+    return const SingboxConfigResult.err(
+        '节点缺少完整服务端配置（raw_node.server），请确认面板返回或升级面板。');
   }
   final passwd = stats.passwd;
   if (passwd == null || passwd.isEmpty) {
@@ -601,15 +620,17 @@ SingboxConfigResult _buildVlessReality({
     return const SingboxConfigResult.err('VLESS 解析失败：缺少地址。');
   }
   if (security == 'reality' && pbkRaw.isEmpty) {
-    return const SingboxConfigResult.err('VLESS Reality 解析失败：缺少公钥（pbk/public_key）。');
+    return const SingboxConfigResult.err(
+        'VLESS Reality 解析失败：缺少公钥（pbk/public_key）。');
   }
-  if (security == 'reality' && sid.isNotEmpty && !RegExp(r'^[0-9a-fA-F]+$').hasMatch(sid)) {
-    return const SingboxConfigResult.err('VLESS Reality 解析失败：short_id/sid 必须为十六进制。');
+  if (security == 'reality' &&
+      sid.isNotEmpty &&
+      !RegExp(r'^[0-9a-fA-F]+$').hasMatch(sid)) {
+    return const SingboxConfigResult.err(
+        'VLESS Reality 解析失败：short_id/sid 必须为十六进制。');
   }
 
-  final serverName = sni.isNotEmpty
-      ? sni
-      : host;
+  final serverName = sni.isNotEmpty ? sni : host;
 
   final outbound = <String, dynamic>{
     'type': 'vless',
@@ -734,6 +755,34 @@ String _assembleJson({
     if (includeTun && isAndroid) 'override_android_vpn': true,
   };
 
+  final proxyServerHost = proxyOutbound['server']?.toString().trim() ?? '';
+  final androidTunDnsRules = <Map<String, dynamic>>[];
+  if (includeTun && isAndroid) {
+    if (_isDomainName(proxyServerHost)) {
+      androidTunDnsRules.add({
+        'server': 'local-dns',
+        'domain': [proxyServerHost],
+      });
+    }
+    androidTunDnsRules.add({
+      'server': 'proxy-dns',
+      'domain_suffix': [
+        'google.com',
+        'googleapis.com',
+        'gstatic.com',
+        'youtube.com',
+        'youtu.be',
+        'ytimg.com',
+        'youtubei.googleapis.com',
+        'facebook.com',
+        'fbcdn.net',
+        'instagram.com',
+        'cdninstagram.com',
+        'whatsapp.net',
+      ],
+    });
+  }
+
   final dns = <String, dynamic>{
     'strategy': 'prefer_ipv4',
     'servers': [
@@ -768,6 +817,7 @@ String _assembleJson({
         'tag': 'local-dns',
       },
     ],
+    if (androidTunDnsRules.isNotEmpty) 'rules': androidTunDnsRules,
     'final': includeTun && isAndroid ? 'proxy-dns' : 'local-dns',
   };
 
@@ -787,4 +837,17 @@ String _assembleJson({
   }
 
   return const JsonEncoder.withIndent('  ').convert(map);
+}
+
+bool _isDomainName(String host) {
+  if (host.isEmpty) {
+    return false;
+  }
+  if (host.contains(':')) {
+    return false;
+  }
+  if (RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(host)) {
+    return false;
+  }
+  return host.contains('.');
 }

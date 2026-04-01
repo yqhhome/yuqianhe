@@ -115,13 +115,13 @@ class MainActivity : FlutterActivity() {
                     stopSingboxLocked()
                 }
                 stopLibboxVpn()
-                val effectiveConfig = ensureTunInbound(
-                    overrideMixedInboundPort(configJson, LIBBOX_MIXED_PORT)
-                )
+                val baseConfig = overrideMixedInboundPort(configJson, LIBBOX_MIXED_PORT)
+                val effectiveConfig = ensureTunInbound(baseConfig)
+                val useTun = hasTunInbound(effectiveConfig)
                 val cfg = File(cacheDir, "singbox_android_run.json")
                 cfg.writeText(effectiveConfig)
-                val prepareIntent = VpnService.prepare(this)
-                if (prepareIntent != null) {
+                val prepareIntent = if (useTun) VpnService.prepare(this) else null
+                if (useTun && prepareIntent != null) {
                     pendingVpnResult = result
                     pendingVpnConfigPath = cfg.absolutePath
                     runOnUiThread {
@@ -227,6 +227,7 @@ class MainActivity : FlutterActivity() {
                     val root = JSONObject(configText)
                     val dns = root.optJSONObject("dns")
                     val route = root.optJSONObject("route")
+                    data["configHasTun"] = hasTunInbound(configText)
                     data["dnsFinal"] = dns?.optString("final") ?: ""
                     data["routeDefaultResolver"] = route?.optString("default_domain_resolver") ?: ""
                     data["quicFallbackEnabled"] = hasUdp443Block(route?.optJSONArray("rules"))
@@ -239,6 +240,8 @@ class MainActivity : FlutterActivity() {
             data["proxyGoogleHome"] = probeUrlViaLocalProxy("https://www.google.com/")
             data["proxyYouTubeHome"] = probeUrlViaLocalProxy("https://www.youtube.com/")
             data["proxyYouTubeApi"] = probeUrlViaLocalProxy("https://youtubei.googleapis.com/")
+            data["directGoogleHome"] = probeUrlDirect("https://www.google.com/")
+            data["directFacebookHome"] = probeUrlDirect("https://www.facebook.com/")
             runOnUiThread { result.success(data) }
         }.start()
     }
@@ -280,6 +283,23 @@ class MainActivity : FlutterActivity() {
             conn.instanceFollowRedirects = true
             conn.requestMethod = "GET"
             conn.setRequestProperty("User-Agent", "yuqianhe-android-runtime-diagnose")
+            val code = conn.responseCode
+            val finalUrl = conn.url?.toString() ?: target
+            conn.inputStream?.close()
+            "code=$code final=$finalUrl"
+        } catch (e: Exception) {
+            "error:${e.javaClass.simpleName}:${e.message ?: ""}"
+        }
+    }
+
+    private fun probeUrlDirect(target: String): String {
+        return try {
+            val conn = URL(target).openConnection() as HttpURLConnection
+            conn.connectTimeout = 4000
+            conn.readTimeout = 5000
+            conn.instanceFollowRedirects = true
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", "yuqianhe-android-runtime-diagnose-direct")
             val code = conn.responseCode
             val finalUrl = conn.url?.toString() ?: target
             conn.inputStream?.close()
@@ -435,19 +455,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
             if (!hasTun) {
-                val tun = JSONObject()
-                tun.put("type", "tun")
-                tun.put("tag", "tun-in")
-                tun.put("address", JSONArray().put("172.19.0.1/30"))
-                tun.put("auto_route", true)
-                tun.put("strict_route", true)
-                tun.put("stack", "system")
-                val merged = JSONArray()
-                merged.put(tun)
-                for (i in 0 until inbounds.length()) {
-                    merged.put(inbounds.opt(i))
-                }
-                root.put("inbounds", merged)
+                return configJson
             }
             val route = root.optJSONObject("route") ?: JSONObject()
             route.put("auto_detect_interface", true)
@@ -459,6 +467,22 @@ class MainActivity : FlutterActivity() {
             root.toString(2)
         } catch (_: Exception) {
             configJson
+        }
+    }
+
+    private fun hasTunInbound(configJson: String): Boolean {
+        return try {
+            val root = JSONObject(configJson)
+            val inbounds = root.optJSONArray("inbounds") ?: return false
+            for (i in 0 until inbounds.length()) {
+                val item = inbounds.optJSONObject(i) ?: continue
+                if (item.optString("type") == "tun") {
+                    return true
+                }
+            }
+            false
+        } catch (_: Exception) {
+            false
         }
     }
 

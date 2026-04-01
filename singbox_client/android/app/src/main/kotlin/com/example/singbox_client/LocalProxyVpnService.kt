@@ -438,10 +438,6 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
             if (dnsServer.isNotEmpty()) {
                 builder.addDnsServer(dnsServer)
             }
-            // Some Android browsers still fail DNS probing unless public resolvers
-            // are explicitly advertised by the VPN as fallbacks.
-            builder.addDnsServer("1.1.1.1")
-            builder.addDnsServer("8.8.8.8")
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val inet4Routes = options.inet4RouteAddress
@@ -487,11 +483,6 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     builder.addRoute("::", 0)
                 }
             }
-        }
-
-        try {
-            builder.addDisallowedApplication(packageName)
-        } catch (_: Exception) {
         }
 
         if (options.isHTTPProxyEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
