@@ -1,4 +1,5 @@
-import 'dart:async' show Future, Timer, unawaited;
+import 'dart:async' show Future, Timer, TimeoutException, unawaited;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../core/app_version.dart';
 import '../../core/proxy/sspanel_singbox_config.dart';
 import '../../core/network/system_speed_sampler.dart';
 import '../../core/singbox/platform_info.dart';
+import '../../core/singbox/singbox_constants.dart';
 import '../../core/singbox/singbox_state.dart';
 import '../../core/singbox/system_proxy.dart';
 import '../../core/singbox/tun_inbound_support.dart';
@@ -401,6 +403,61 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  Future<String?> _probeGoogleViaLocalProxy() async {
+    final client = HttpClient();
+    client.findProxy = (uri) => 'PROXY $kSingboxMixedHost:$kSingboxMixedPort';
+    client.connectionTimeout = const Duration(seconds: 8);
+    try {
+      final req = await client
+          .getUrl(Uri.parse('https://www.google.com/'))
+          .timeout(const Duration(seconds: 10));
+      req.followRedirects = true;
+      req.maxRedirects = 8;
+      req.headers.set(HttpHeaders.userAgentHeader, 'yuqianhe-google-probe');
+      final res = await req.close().timeout(const Duration(seconds: 12));
+      final status = res.statusCode;
+      final finalUri = res.redirects.isNotEmpty ? res.redirects.last.location : req.uri;
+      await res.drain<void>();
+      if (status >= 200 && status < 400) {
+        return null;
+      }
+      return 'Google 探测失败：HTTP $status\n'
+          'finalUri=$finalUri\n'
+          'proxy=$kSingboxMixedHost:$kSingboxMixedPort';
+    } on TimeoutException catch (e) {
+      return 'Google 探测超时：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
+    } on SocketException catch (e) {
+      return 'Google 探测 SocketException：$e\nproxy=$kSingboxMixedHost:$kSingboxMixedPort';
+    } catch (e, st) {
+      return 'Google 探测异常：$e\n'
+          'proxy=$kSingboxMixedHost:$kSingboxMixedPort\n'
+          'stack:\n$st';
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<void> _showGoogleProbeError(String details) async {
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('访问google失败'),
+        content: SingleChildScrollView(
+          child: SelectableText(details),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _fmtDuration(Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60);
@@ -503,12 +560,20 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
     }
     if (showSuccessSnack && mounted && after.phase == SingboxRunPhase.running) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('已连接：已通过本机混合端口代理连通外网检测。'),
-          duration: Duration(seconds: 5),
-        ),
-      );
+      final probeError = await _probeGoogleViaLocalProxy();
+      if (!mounted) {
+        return false;
+      }
+      if (probeError == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('访问google成功'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      } else {
+        await _showGoogleProbeError(probeError);
+      }
     }
     return after.phase == SingboxRunPhase.running;
   }
