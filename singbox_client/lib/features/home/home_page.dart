@@ -62,38 +62,24 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _maybeShowAndroidDiagnose(SingboxRunPhase phase) async {
-    if (!mounted) return;
-    if (phase == SingboxRunPhase.starting) {
+    if (!mounted || !isAndroid) return;
+    final tunMode = ref.read(clientUiPrefsProvider).tunMode;
+    if (!tunMode) {
+      _androidDiagnoseTimer?.cancel();
+      _androidDiagnoseTimer = null;
+      _androidDiagnoseShown = false;
+      return;
+    }
+    if (phase == SingboxRunPhase.running) {
       if (_androidDiagnoseTimer != null || _androidDiagnoseShown) {
         return;
       }
-      _androidDiagnoseTimer = Timer(const Duration(seconds: 12), () async {
+      _androidDiagnoseShown = true;
+      _androidDiagnoseTimer = Timer(const Duration(milliseconds: 800), () async {
         if (!mounted) return;
-        _androidDiagnoseShown = true;
         _androidDiagnoseTimer = null;
         try {
-          final ch = MethodChannel('yuqianhe/singbox_android');
-          final map = await ch.invokeMethod('diagnose').timeout(const Duration(seconds: 8));
-          final text = map is Map
-              ? map.entries
-                  .map((e) => '${e.key}=${e.value}')
-                  .join('\n')
-              : '$map';
-          await showDialog<void>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Android 启动诊断'),
-              content: SingleChildScrollView(
-                child: SelectableText(text),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('关闭'),
-                ),
-              ],
-            ),
-          );
+          await _showAndroidRuntimeDiagnosis();
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
@@ -104,10 +90,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       return;
     }
 
-    // running / error / stopped：取消诊断定时器并允许下次重试再显示
+    // 离开 running 后，取消等待中的诊断并允许下次连接重新显示
     _androidDiagnoseTimer?.cancel();
     _androidDiagnoseTimer = null;
-    _androidDiagnoseShown = false;
+    if (phase != SingboxRunPhase.starting) {
+      _androidDiagnoseShown = false;
+    }
   }
 
   void _showAnnouncementDetail(String body) {
@@ -521,9 +509,6 @@ class _HomePageState extends ConsumerState<HomePage> {
           duration: Duration(seconds: 5),
         ),
       );
-    }
-    if (after.phase == SingboxRunPhase.running && isAndroid && prefs.tunMode) {
-      await _showAndroidRuntimeDiagnosis();
     }
     return after.phase == SingboxRunPhase.running;
   }
