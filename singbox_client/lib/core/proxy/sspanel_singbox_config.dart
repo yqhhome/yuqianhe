@@ -770,7 +770,7 @@ String _assembleJson({
   };
 
   if (includeTun && isAndroid) {
-    route['default_domain_resolver'] = 'local-dns';
+    route['default_domain_resolver'] = 'proxy-dns';
   }
 
   return const JsonEncoder.withIndent('  ').convert(map);

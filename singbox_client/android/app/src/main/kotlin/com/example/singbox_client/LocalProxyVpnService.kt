@@ -434,14 +434,18 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
         if (options.autoRoute) {
             val dnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
-            lastTunDnsServer = dnsServer
-            if (dnsServer.isNotEmpty()) {
-                builder.addDnsServer(dnsServer)
-            }
             // Some Android browsers still fail DNS probing unless public resolvers
             // are explicitly advertised by the VPN as fallbacks.
             builder.addDnsServer("1.1.1.1")
             builder.addDnsServer("8.8.8.8")
+            if (dnsServer.isNotEmpty() && dnsServer != "1.1.1.1" && dnsServer != "8.8.8.8") {
+                builder.addDnsServer(dnsServer)
+            }
+            lastTunDnsServer = if (dnsServer.isNotEmpty()) {
+                "1.1.1.1,8.8.8.8,$dnsServer"
+            } else {
+                "1.1.1.1,8.8.8.8"
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 val inet4Routes = options.inet4RouteAddress
