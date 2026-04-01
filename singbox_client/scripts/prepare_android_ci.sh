@@ -22,6 +22,7 @@ fi
 if [[ -s "$ARM32_SO" && -s "$ARM64_SO" ]]; then
   chmod 755 "$ARM32_SO" "$ARM64_SO"
   echo "Using vendored Android native binaries from jniLibs."
+  ls -lh "$LIBS_DIR/libbox.aar" "$ARM32_SO" "$ARM64_SO"
   exit 0
 fi
 
