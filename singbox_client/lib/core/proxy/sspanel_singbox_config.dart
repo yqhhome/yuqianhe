@@ -784,7 +784,7 @@ String _assembleJson({
   }
 
   final dns = <String, dynamic>{
-    'strategy': 'prefer_ipv4',
+    'strategy': includeTun && isAndroid ? 'ipv4_only' : 'prefer_ipv4',
     'servers': [
       if (includeTun && isAndroid)
         {

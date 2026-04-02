@@ -413,6 +413,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
     client.connectionTimeout = const Duration(seconds: 8);
     final mode = useLocalProxy ? 'local-proxy' : 'direct';
+    List<InternetAddress> resolvedAddresses = const <InternetAddress>[];
+    try {
+      resolvedAddresses = await InternetAddress.lookup('www.facebook.com')
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {}
+    final resolvedSummary = resolvedAddresses.isEmpty
+        ? 'lookup=empty'
+        : 'lookup=${resolvedAddresses.map((e) => '${e.type.name}:${e.address}').join(',')}';
     try {
       final req = await client
           .getUrl(Uri.parse('https://www.facebook.com/'))
@@ -441,6 +449,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         final preview = body.replaceAll('\n', ' ').replaceAll('\r', ' ').trim();
         return 'Facebook 探测失败：页面内容不符合预期\n'
             'mode=$mode\n'
+            '$resolvedSummary\n'
             'HTTP=$status\n'
             'finalUri=$finalUri\n'
             'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}\n'
@@ -448,19 +457,23 @@ class _HomePageState extends ConsumerState<HomePage> {
       }
       return 'Facebook 探测失败：HTTP $status\n'
           'mode=$mode\n'
+          '$resolvedSummary\n'
           'finalUri=$finalUri\n'
           'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}';
     } on TimeoutException catch (e) {
       return 'Facebook 探测超时：$e\n'
           'mode=$mode\n'
+          '$resolvedSummary\n'
           'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}';
     } on SocketException catch (e) {
       return 'Facebook 探测 SocketException：$e\n'
           'mode=$mode\n'
+          '$resolvedSummary\n'
           'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}';
     } catch (e, st) {
       return 'Facebook 探测异常：$e\n'
           'mode=$mode\n'
+          '$resolvedSummary\n'
           'proxy=${useLocalProxy ? '$kSingboxMixedHost:$kSingboxMixedPort' : 'none'}\n'
           'stack:\n$st';
     } finally {
