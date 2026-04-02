@@ -372,7 +372,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
     try {
       const ch = MethodChannel('yuqianhe/singbox_android');
-      final map = await ch.invokeMethod('diagnose').timeout(const Duration(seconds: 8));
+      final map = await ch.invokeMethod('diagnose').timeout(const Duration(seconds: 25));
       final text = map is Map
           ? map.entries.map((e) => '${e.key}=${e.value}').join('\n')
           : '$map';
@@ -479,6 +479,28 @@ class _HomePageState extends ConsumerState<HomePage> {
     } finally {
       client.close(force: true);
     }
+  }
+
+  Future<String?> _probeFacebookWithRetries({
+    required bool useLocalProxy,
+    int attempts = 1,
+    Duration delayBetweenAttempts = const Duration(seconds: 1),
+    Duration initialDelay = Duration.zero,
+  }) async {
+    if (initialDelay > Duration.zero) {
+      await Future<void>.delayed(initialDelay);
+    }
+    String? lastError;
+    for (var i = 0; i < attempts; i++) {
+      lastError = await _probeFacebook(useLocalProxy: useLocalProxy);
+      if (lastError == null) {
+        return null;
+      }
+      if (i < attempts - 1) {
+        await Future<void>.delayed(delayBetweenAttempts);
+      }
+    }
+    return lastError;
   }
 
   Future<void> _showFacebookProbeError(String details) async {
@@ -605,7 +627,14 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
     if (showSuccessSnack && mounted && after.phase == SingboxRunPhase.running) {
       final useLocalProxyForProbe = !prefs.tunMode;
-      final probeError = await _probeFacebook(useLocalProxy: useLocalProxyForProbe);
+      final probeError = await _probeFacebookWithRetries(
+        useLocalProxy: useLocalProxyForProbe,
+        attempts: prefs.tunMode && isAndroid ? 3 : 1,
+        initialDelay: prefs.tunMode && isAndroid
+            ? const Duration(seconds: 2)
+            : Duration.zero,
+        delayBetweenAttempts: const Duration(seconds: 2),
+      );
       if (!mounted) {
         return false;
       }

@@ -107,7 +107,7 @@ Future<String> _withDiagnosis(String base) async {
           // keep extensibility for native-side detailed checks
           'config': null,
         })
-        .timeout(const Duration(seconds: 8));
+        .timeout(const Duration(seconds: 25));
     if (map == null || map.isEmpty) {
       return base;
     }
@@ -130,12 +130,15 @@ Future<String> _withDiagnosis(String base) async {
     final routeDefaultResolver = map['routeDefaultResolver']?.toString() ?? '';
     final quicFallbackEnabled = map['quicFallbackEnabled']?.toString() ?? '';
     final resolveGoogle = map['resolveGoogle']?.toString() ?? '';
+    final resolveFacebook = map['resolveFacebook']?.toString() ?? '';
     final resolveYouTube = map['resolveYouTube']?.toString() ?? '';
     final resolveYouTubeApi = map['resolveYouTubeApi']?.toString() ?? '';
     final proxyGoogle204 = map['proxyGoogle204']?.toString() ?? '';
     final proxyGoogleHome = map['proxyGoogleHome']?.toString() ?? '';
     final proxyYouTubeHome = map['proxyYouTubeHome']?.toString() ?? '';
     final proxyYouTubeApi = map['proxyYouTubeApi']?.toString() ?? '';
+    final directGoogleHome = map['directGoogleHome']?.toString() ?? '';
+    final directFacebookHome = map['directFacebookHome']?.toString() ?? '';
     return '$base\n'
         '诊断: abi=$abi arch=$arch asset(tar/tgz)=$tar/$tgz '
         'bin(exists/exec)=$binExists/$binExec ensureOk=$ensureOk '
@@ -150,12 +153,15 @@ Future<String> _withDiagnosis(String base) async {
         '${routeDefaultResolver.isNotEmpty ? '\nrouteDefaultResolver: $routeDefaultResolver' : ''}'
         '${quicFallbackEnabled.isNotEmpty ? '\nquicFallbackEnabled: $quicFallbackEnabled' : ''}'
         '${resolveGoogle.isNotEmpty ? '\nresolveGoogle: $resolveGoogle' : ''}'
+        '${resolveFacebook.isNotEmpty ? '\nresolveFacebook: $resolveFacebook' : ''}'
         '${resolveYouTube.isNotEmpty ? '\nresolveYouTube: $resolveYouTube' : ''}'
         '${resolveYouTubeApi.isNotEmpty ? '\nresolveYouTubeApi: $resolveYouTubeApi' : ''}'
         '${proxyGoogle204.isNotEmpty ? '\nproxyGoogle204: $proxyGoogle204' : ''}'
         '${proxyGoogleHome.isNotEmpty ? '\nproxyGoogleHome: $proxyGoogleHome' : ''}'
         '${proxyYouTubeHome.isNotEmpty ? '\nproxyYouTubeHome: $proxyYouTubeHome' : ''}'
-        '${proxyYouTubeApi.isNotEmpty ? '\nproxyYouTubeApi: $proxyYouTubeApi' : ''}';
+        '${proxyYouTubeApi.isNotEmpty ? '\nproxyYouTubeApi: $proxyYouTubeApi' : ''}'
+        '${directGoogleHome.isNotEmpty ? '\ndirectGoogleHome: $directGoogleHome' : ''}'
+        '${directFacebookHome.isNotEmpty ? '\ndirectFacebookHome: $directFacebookHome' : ''}';
   } catch (_) {
     return base;
   }

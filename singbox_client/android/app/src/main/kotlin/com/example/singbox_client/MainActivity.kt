@@ -279,8 +279,8 @@ class MainActivity : FlutterActivity() {
         return try {
             val proxy = Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", LIBBOX_MIXED_PORT))
             val conn = URL(target).openConnection(proxy) as HttpURLConnection
-            conn.connectTimeout = 4000
-            conn.readTimeout = 5000
+            conn.connectTimeout = 2000
+            conn.readTimeout = 3000
             conn.instanceFollowRedirects = true
             conn.requestMethod = "GET"
             conn.setRequestProperty("User-Agent", "yuqianhe-android-runtime-diagnose")
@@ -296,8 +296,8 @@ class MainActivity : FlutterActivity() {
     private fun probeUrlDirect(target: String): String {
         return try {
             val conn = URL(target).openConnection() as HttpURLConnection
-            conn.connectTimeout = 4000
-            conn.readTimeout = 5000
+            conn.connectTimeout = 2000
+            conn.readTimeout = 3000
             conn.instanceFollowRedirects = true
             conn.requestMethod = "GET"
             conn.setRequestProperty("User-Agent", "yuqianhe-android-runtime-diagnose-direct")
