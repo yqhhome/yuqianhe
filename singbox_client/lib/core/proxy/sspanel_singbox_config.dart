@@ -753,6 +753,23 @@ String _assembleJson({
     'final': 'proxy',
     'auto_detect_interface': includeTun && isAndroid ? true : !isAndroid,
     if (includeTun && isAndroid) 'override_android_vpn': true,
+    if (includeTun)
+      'rules': [
+        {'action': 'sniff'},
+        {
+          'type': 'logical',
+          'mode': 'or',
+          'rules': [
+            {'protocol': 'dns'},
+            {'port': 53},
+          ],
+          'action': 'hijack-dns',
+        },
+        {
+          'ip_is_private': true,
+          'outbound': 'direct',
+        },
+      ],
   };
 
   final proxyServerHost = proxyOutbound['server']?.toString().trim() ?? '';
@@ -833,7 +850,7 @@ String _assembleJson({
   };
 
   if (includeTun && isAndroid) {
-    route['default_domain_resolver'] = 'proxy-dns';
+    route['default_domain_resolver'] = 'local-dns';
   }
 
   return const JsonEncoder.withIndent('  ').convert(map);

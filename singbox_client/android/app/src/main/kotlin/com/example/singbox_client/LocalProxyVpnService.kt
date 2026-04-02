@@ -434,9 +434,28 @@ class LocalProxyVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
         if (options.autoRoute) {
             val dnsServer = runCatching { options.dnsServerAddress.value }.getOrDefault("")
-            lastTunDnsServer = dnsServer
+            val advertisedDns = linkedSetOf<String>()
             if (dnsServer.isNotEmpty()) {
-                builder.addDnsServer(dnsServer)
+                advertisedDns.add(dnsServer)
+            } else {
+                val network = defaultNetworkMonitor.require()
+                val upstreamDns = runCatching {
+                    connectivity.getLinkProperties(network)?.dnsServers.orEmpty()
+                }.getOrDefault(emptyList())
+                for (server in upstreamDns) {
+                    val host = server.hostAddress ?: continue
+                    if (host.isNotEmpty()) {
+                        advertisedDns.add(host)
+                    }
+                }
+            }
+            if (advertisedDns.isEmpty()) {
+                advertisedDns.add("1.1.1.1")
+                advertisedDns.add("8.8.8.8")
+            }
+            lastTunDnsServer = advertisedDns.joinToString(",")
+            for (server in advertisedDns) {
+                builder.addDnsServer(server)
             }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
