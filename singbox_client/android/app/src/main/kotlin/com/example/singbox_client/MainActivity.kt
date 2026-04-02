@@ -234,6 +234,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
             data["resolveGoogle"] = resolveDomain("www.google.com")
+            data["resolveFacebook"] = resolveDomain("www.facebook.com")
             data["resolveYouTube"] = resolveDomain("www.youtube.com")
             data["resolveYouTubeApi"] = resolveDomain("youtubei.googleapis.com")
             data["proxyGoogle204"] = probeUrlViaLocalProxy("https://www.google.com/generate_204")
@@ -419,28 +420,45 @@ class MainActivity : FlutterActivity() {
                     hasTun = true
                     item.put("tag", "tun-in")
                     val address = JSONArray()
+                    var hasIpv4TunAddress = false
+                    var hasIpv6TunAddress = false
                     val currentAddress = item.optJSONArray("address")
                     if (currentAddress != null && currentAddress.length() > 0) {
                         for (j in 0 until currentAddress.length()) {
-                            address.put(currentAddress.opt(j))
+                            val value = currentAddress.opt(j)?.toString() ?: continue
+                            if (value.contains(".")) {
+                                hasIpv4TunAddress = true
+                            }
+                            if (value.contains(":")) {
+                                hasIpv6TunAddress = true
+                            }
+                            address.put(value)
                         }
                     } else {
                         val legacyInet4 = item.opt("inet4_address")
                         when (legacyInet4) {
                             is JSONArray -> {
                                 for (j in 0 until legacyInet4.length()) {
-                                    address.put(legacyInet4.opt(j))
+                                    val value = legacyInet4.opt(j)?.toString() ?: continue
+                                    if (value.contains(".")) {
+                                        hasIpv4TunAddress = true
+                                    }
+                                    address.put(value)
                                 }
                             }
                             is String -> {
                                 if (legacyInet4.isNotBlank()) {
+                                    hasIpv4TunAddress = true
                                     address.put(legacyInet4)
                                 }
                             }
                         }
                     }
-                    if (address.length() == 0) {
+                    if (!hasIpv4TunAddress) {
                         address.put("172.19.0.1/30")
+                    }
+                    if (!hasIpv6TunAddress) {
+                        address.put("fdfe:dcba:9876::1/126")
                     }
                     item.put("address", address)
                     item.remove("inet4_address")
