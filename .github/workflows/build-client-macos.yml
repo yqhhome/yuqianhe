@@ -1,0 +1,47 @@
+name: Build Client macOS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "singbox_client/**"
+      - ".github/workflows/build-client-macos.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Fetch Dart packages
+        working-directory: singbox_client
+        run: flutter pub get
+
+      - name: Ensure scripts are executable
+        working-directory: singbox_client
+        run: chmod +x scripts/*.sh
+
+      - name: Build macOS release bundles
+        working-directory: singbox_client
+        run: ./scripts/build_macos_release.sh
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: singbox-client-macos
+          path: |
+            singbox_client/dist/macos/*.zip
+          if-no-files-found: error
