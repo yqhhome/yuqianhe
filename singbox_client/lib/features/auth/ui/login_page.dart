@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_paths.dart';
 import '../../../core/support/external_browser_launcher.dart';
 import '../../../core/settings/panel_url_hints.dart';
 import '../../../core/ui/brand_logo.dart';
 import '../../../data/models/login_request.dart';
 import '../application/auth_notifier.dart';
 import '../application/auth_state.dart';
+import '../../home/application/selected_node_notifier.dart';
 import 'password_recovery_page.dart';
 
 /// First screen: email + password + login / register. Server URL is in ⚙️ only.
@@ -145,6 +147,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         return;
       }
       final s = ref.read(authNotifierProvider);
+      if (s.status == AuthStatus.authenticated) {
+        await ref.read(selectedNodeIdProvider.notifier).set(null);
+      }
       if (s.status != AuthStatus.authenticated && s.lastError != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(s.lastError!)),
@@ -165,7 +170,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
       return;
     }
-    final ok = await ExternalBrowserLauncher.openUrl('${Uri.parse(base).origin}/auth/register');
+    final ok = await ExternalBrowserLauncher.openUrl('${Uri.parse(base).origin}${ApiPaths.register}');
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('无法打开注册页面')),
