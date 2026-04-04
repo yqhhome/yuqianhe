@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit
 class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "yuqianhe/singbox_android"
-        private const val SINGBOX_VERSION = "1.13.4"
         private const val REQUEST_VPN_PERMISSION = 7001
         private const val LIBBOX_MIXED_PORT = 2080
         private var singProcess: Process? = null
@@ -195,8 +194,8 @@ class MainActivity : FlutterActivity() {
             data["vpnPrepared"] = VpnService.prepare(this) == null
             val assetNames = listBundledArchives()
             data["assetList"] = assetNames.joinToString(",")
-            val assetGz = "sing-box-$SINGBOX_VERSION-android-${mapArch()}.tar.gz"
-            val assetTar = "sing-box-$SINGBOX_VERSION-android-${mapArch()}.tar"
+            val assetGz = "sing-box-${BuildConfig.SINGBOX_VERSION}-android-${mapArch()}.tar.gz"
+            val assetTar = "sing-box-${BuildConfig.SINGBOX_VERSION}-android-${mapArch()}.tar"
             data["assetTarGzExists"] = assetNames.contains(assetGz)
             data["assetTarExists"] = assetNames.contains(assetTar)
             val bin = File(applicationInfo.nativeLibraryDir, "libsing-box.so")

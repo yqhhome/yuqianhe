@@ -25,6 +25,9 @@ app.*.map.json
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
+android/app/libs/
+android/app/src/main/jniLibs/
+android/app/src/main/assets/singbox/
 *.jks
 
 # iOS

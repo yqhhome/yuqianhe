@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# 一键构建 macOS 双版本客户端（Apple Silicon + Intel），并内置匹配架构的 sing-box。
+# 一键构建 macOS 多版本客户端（Apple Silicon + Intel + Universal），并内置匹配架构的 sing-box。
 # 输出：
 #   dist/macos/singbox_client-arm64.app
 #   dist/macos/singbox_client-x86_64.app
+#   dist/macos/singbox_client-universal.app
 #   dist/macos/singbox_client-arm64.zip
 #   dist/macos/singbox_client-x86_64.zip
+#   dist/macos/singbox_client-universal.zip
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -175,14 +177,43 @@ INTEL_APP_DST="$DIST_DIR/${APP_NAME}-x86_64.app"
 copy_app "$INTEL_APP_SRC" "$INTEL_APP_DST"
 zip_app "$INTEL_APP_DST" "$DIST_DIR/${APP_NAME}-x86_64.zip"
 
+echo "==> 构建 Universal 包"
+SINGBOX_PATH="$BIN_DIR/sing-box-universal" \
+BUNDLE_SINGBOX_REQUIRED=1 \
+"$FLUTTER_BIN" build macos --release --config-only
+
+SINGBOX_PATH="$BIN_DIR/sing-box-universal" \
+BUNDLE_SINGBOX_REQUIRED=1 \
+xcodebuild \
+  -workspace macos/Runner.xcworkspace \
+  -scheme Runner \
+  -configuration Release \
+  -derivedDataPath build/macos_universal \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  ARCHS="arm64 x86_64" \
+  ONLY_ACTIVE_ARCH=NO \
+  > "$WORK_DIR/xcodebuild-universal.log" 2>&1
+
+UNIVERSAL_APP_SRC="$(pick_app_from_dir "$ROOT/build/macos_universal/Build/Products/Release")"
+UNIVERSAL_APP_DST="$DIST_DIR/${APP_NAME}-universal.app"
+copy_app "$UNIVERSAL_APP_SRC" "$UNIVERSAL_APP_DST"
+zip_app "$UNIVERSAL_APP_DST" "$DIST_DIR/${APP_NAME}-universal.zip"
+
 echo "==> 架构校验"
 verify_arch "$ARM_APP_DST/Contents/Frameworks/objective_c.framework/objective_c" "arm64"
 verify_arch "$ARM_APP_DST/Contents/Resources/sing-box" "arm64"
 verify_arch "$INTEL_APP_DST/Contents/Frameworks/objective_c.framework/objective_c" "x86_64"
 verify_arch "$INTEL_APP_DST/Contents/Resources/sing-box" "x86_64"
+verify_arch "$UNIVERSAL_APP_DST/Contents/Frameworks/objective_c.framework/objective_c" "arm64"
+verify_arch "$UNIVERSAL_APP_DST/Contents/Frameworks/objective_c.framework/objective_c" "x86_64"
+verify_arch "$UNIVERSAL_APP_DST/Contents/Resources/sing-box" "arm64"
+verify_arch "$UNIVERSAL_APP_DST/Contents/Resources/sing-box" "x86_64"
 
 echo "==> 完成"
 echo "ARM 包:   $ARM_APP_DST"
 echo "Intel 包: $INTEL_APP_DST"
+echo "Universal 包: $UNIVERSAL_APP_DST"
 echo "ARM ZIP:   $DIST_DIR/${APP_NAME}-arm64.zip"
 echo "Intel ZIP: $DIST_DIR/${APP_NAME}-x86_64.zip"
+echo "Universal ZIP: $DIST_DIR/${APP_NAME}-universal.zip"

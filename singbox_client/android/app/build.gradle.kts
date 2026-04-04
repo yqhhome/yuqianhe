@@ -5,6 +5,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val singboxVersion = providers
+    .gradleProperty("SINGBOX_VERSION")
+    .orElse(providers.environmentVariable("SINGBOX_VERSION"))
+    .orElse("1.13.4")
+    .get()
+
 android {
     namespace = "com.example.singbox_client"
     compileSdk = flutter.compileSdkVersion
@@ -28,6 +34,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        buildConfigField("String", "SINGBOX_VERSION", "\"$singboxVersion\"")
     }
 
     buildTypes {
@@ -42,6 +49,10 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 }
 

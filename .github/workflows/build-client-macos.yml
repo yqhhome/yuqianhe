@@ -1,4 +1,4 @@
-name: Build Client macOS
+name: Build Clients
 
 on:
   push:
@@ -9,12 +9,64 @@ on:
       - ".github/workflows/build-client-macos.yml"
   workflow_dispatch:
 
+env:
+  SINGBOX_VERSION: "1.13.4"
+
 permissions:
   contents: read
 
 jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LIBBOX_AAR_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/singbox_client/android/app/libs/libbox.aar
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Cache client build tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            singbox_client/.build-tools
+          key: ${{ runner.os }}-client-${{ env.SINGBOX_VERSION }}-${{ hashFiles('singbox_client/pubspec.lock', 'singbox_client/android/app/build.gradle.kts', 'singbox_client/scripts/prepare_android_ci.sh', 'singbox_client/scripts/build_android_release.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-client-${{ env.SINGBOX_VERSION }}-
+
+      - name: Ensure scripts are executable
+        working-directory: singbox_client
+        run: chmod +x scripts/*.sh
+
+      - name: Build Android release artifacts
+        working-directory: singbox_client
+        run: ./scripts/build_android_release.sh
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: singbox-client-android
+          path: |
+            singbox_client/dist/android/*
+          if-no-files-found: error
+
   build-macos:
     runs-on: macos-14
+    timeout-minutes: 90
 
     steps:
       - name: Checkout code
@@ -25,6 +77,15 @@ jobs:
         with:
           channel: stable
           cache: true
+
+      - name: Cache client build tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            singbox_client/.build-tools
+          key: ${{ runner.os }}-client-${{ env.SINGBOX_VERSION }}-${{ hashFiles('singbox_client/pubspec.lock', 'singbox_client/scripts/build_macos_dual_release.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-client-${{ env.SINGBOX_VERSION }}-
 
       - name: Fetch Dart packages
         working-directory: singbox_client
@@ -44,4 +105,45 @@ jobs:
           name: singbox-client-macos
           path: |
             singbox_client/dist/macos/*.zip
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Cache client build tools
+        uses: actions/cache@v4
+        with:
+          path: |
+            singbox_client/.build-tools
+          key: ${{ runner.os }}-client-${{ env.SINGBOX_VERSION }}-${{ hashFiles('singbox_client/pubspec.lock', 'singbox_client/scripts/build_windows_release.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-client-${{ env.SINGBOX_VERSION }}-
+
+      - name: Ensure scripts are executable
+        working-directory: singbox_client
+        shell: bash
+        run: chmod +x scripts/*.sh
+
+      - name: Build Windows portable zip
+        working-directory: singbox_client
+        shell: bash
+        run: ./scripts/build_windows_release.sh
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: singbox-client-windows
+          path: |
+            singbox_client/dist/windows/*.zip
           if-no-files-found: error
