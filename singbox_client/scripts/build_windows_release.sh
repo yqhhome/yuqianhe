@@ -55,8 +55,22 @@ download_file "$URL" "$ARCHIVE"
 
 rm -rf "$UNPACK_DIR"
 mkdir -p "$UNPACK_DIR"
-pwsh -NoProfile -Command \
-  "Expand-Archive -LiteralPath '$ARCHIVE' -DestinationPath '$UNPACK_DIR' -Force"
+ARCHIVE_PATH="$ARCHIVE" UNPACK_PATH="$UNPACK_DIR" "$PYTHON_BIN" - <<'PY'
+import os
+import pathlib
+import zipfile
+
+archive = pathlib.Path(os.environ["ARCHIVE_PATH"]).resolve()
+unpack = pathlib.Path(os.environ["UNPACK_PATH"]).resolve()
+
+if not archive.is_file():
+    raise SystemExit(f"missing archive: {archive}")
+
+with zipfile.ZipFile(archive) as zf:
+    zf.extractall(unpack)
+
+print(f"Extracted {archive.name} -> {unpack}")
+PY
 
 echo "==> flutter clean"
 "$FLUTTER_BIN" clean
@@ -80,8 +94,24 @@ for dll in "$UNPACK_DIR"/*.dll; do
 done
 
 rm -f "$ZIP_PATH"
-pwsh -NoProfile -Command \
-  "Compress-Archive -LiteralPath '$APP_DIR' -DestinationPath '$ZIP_PATH' -Force"
+APP_DIR_PATH="$APP_DIR" ZIP_PATH_VALUE="$ZIP_PATH" "$PYTHON_BIN" - <<'PY'
+import os
+import pathlib
+import zipfile
+
+app_dir = pathlib.Path(os.environ["APP_DIR_PATH"]).resolve()
+zip_path = pathlib.Path(os.environ["ZIP_PATH_VALUE"]).resolve()
+
+if not app_dir.is_dir():
+    raise SystemExit(f"missing app dir: {app_dir}")
+
+with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    for path in app_dir.rglob("*"):
+        if path.is_file():
+            zf.write(path, path.relative_to(app_dir.parent))
+
+print(f"Created {zip_path}")
+PY
 
 "$PYTHON_BIN" - <<'PY'
 import pathlib
