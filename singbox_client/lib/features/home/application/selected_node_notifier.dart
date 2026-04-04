@@ -38,16 +38,18 @@ class SelectedNodeIdNotifier extends Notifier<int?> {
     if (cur != null && nodes.any((n) => n.id == cur)) {
       return;
     }
+    if (pingMap == null || pingMap.isEmpty) {
+      return;
+    }
     final reachable = <PanelNode>[
-      if (pingMap != null)
-        for (final node in nodes)
-          if ((pingMap[node.id] ?? NodePingNotifier.pending) >= 0) node,
+      for (final node in nodes)
+        if ((pingMap[node.id] ?? NodePingNotifier.pending) >= 0) node,
     ];
     if (reachable.isNotEmpty) {
       await set(reachable[_random.nextInt(reachable.length)].id);
       return;
     }
-    final allMeasured = pingMap != null && pingMap.length >= nodes.length;
+    final allMeasured = pingMap.length >= nodes.length;
     if (allMeasured) {
       await set(nodes[_random.nextInt(nodes.length)].id);
     }

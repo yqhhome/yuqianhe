@@ -1280,7 +1280,7 @@ class _DashboardPanelState extends State<_DashboardPanel> {
                   ),
                   Expanded(
                     child: _UsageStatTile(
-                      label: '天数',
+                      label: '剩余天数',
                       value: widget.stats.remainingDaysLabel(),
                       icon: Icons.calendar_today_rounded,
                       color: const Color(0xFF5B9DFF),
@@ -1746,7 +1746,7 @@ class _BottomNavBar extends StatelessWidget {
               children: [
                 Icon(
                   icon,
-                  size: 22,
+                  size: 20,
                   color: active ? theme.colorScheme.primary : theme.colorScheme.outline,
                 ),
                 const SizedBox(height: 6),
