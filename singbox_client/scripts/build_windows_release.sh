@@ -85,13 +85,38 @@ ZIP_PATH="$DIST_DIR/singbox-client-windows-x64.zip"
 
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR"
-cp -R "$BUNDLE_DIR"/. "$APP_DIR"/
-cp -f "$UNPACK_DIR/sing-box.exe" "$APP_DIR/sing-box.exe"
-for dll in "$UNPACK_DIR"/*.dll; do
-  if [[ -f "$dll" ]]; then
-    cp -f "$dll" "$APP_DIR/"
-  fi
-done
+WINDOWS_BUNDLE_DIR="$BUNDLE_DIR" \
+WINDOWS_APP_DIR="$APP_DIR" \
+WINDOWS_UNPACK_DIR="$UNPACK_DIR" \
+"$PYTHON_BIN" - <<'PY'
+import os
+import pathlib
+import shutil
+
+bundle_dir = pathlib.Path(os.environ["WINDOWS_BUNDLE_DIR"]).resolve()
+app_dir = pathlib.Path(os.environ["WINDOWS_APP_DIR"]).resolve()
+unpack_dir = pathlib.Path(os.environ["WINDOWS_UNPACK_DIR"]).resolve()
+
+if not bundle_dir.is_dir():
+    raise SystemExit(f"missing Windows bundle dir: {bundle_dir}")
+
+for path in bundle_dir.iterdir():
+    target = app_dir / path.name
+    if path.is_dir():
+        shutil.copytree(path, target, dirs_exist_ok=True)
+    else:
+        shutil.copy2(path, target)
+
+exe_candidates = sorted(unpack_dir.rglob("sing-box.exe"))
+if not exe_candidates:
+    raise SystemExit(f"sing-box.exe not found under {unpack_dir}")
+shutil.copy2(exe_candidates[0], app_dir / "sing-box.exe")
+
+for dll in sorted(unpack_dir.rglob("*.dll")):
+    shutil.copy2(dll, app_dir / dll.name)
+
+print(f"Prepared Windows portable bundle at {app_dir}")
+PY
 
 rm -f "$ZIP_PATH"
 APP_DIR_PATH="$APP_DIR" ZIP_PATH_VALUE="$ZIP_PATH" "$PYTHON_BIN" - <<'PY'
