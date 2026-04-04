@@ -2,20 +2,22 @@ import 'dart:async' show Future, Timer, unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_version.dart';
 import '../../core/proxy/sspanel_singbox_config.dart';
 import '../../core/network/system_speed_sampler.dart';
 import '../../core/singbox/platform_info.dart';
 import '../../core/singbox/singbox_state.dart';
+import '../../core/support/external_browser_launcher.dart';
 import '../../core/singbox/system_proxy.dart';
 import '../../core/singbox/tun_inbound_support.dart';
 import '../../core/ui/brand_logo.dart';
 import '../../core/util/country_flag.dart';
 import '../../data/datasources/user_remote_datasource.dart';
 import '../../data/models/panel_user_stats.dart';
+import '../announcement/announcement_page.dart';
 import '../auth/application/auth_notifier.dart';
+import '../support/support_page.dart';
 import 'application/client_ui_prefs_notifier.dart';
 import 'ui/announcement_marquee.dart';
 import 'application/node_list_notifier.dart';
@@ -44,6 +46,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   bool _androidDiagnoseShown = false;
   bool _accessBlockedDialogOpen = false;
   bool _powerActionLocked = false;
+  int _tabIndex = 0;
   DateTime? _lastUserStatsRefreshAt;
   DateTime? _connectedAt;
   Duration _elapsed = Duration.zero;
@@ -60,6 +63,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     _androidDiagnoseTimer?.cancel();
     _accountStatusTimer?.cancel();
     super.dispose();
+  }
+
+  void _selectTab(int index) {
+    if (_tabIndex == index) {
+      return;
+    }
+    setState(() => _tabIndex = index);
   }
 
   Future<void> _maybeShowAndroidDiagnose(SingboxRunPhase phase) async {
@@ -97,32 +107,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (phase != SingboxRunPhase.starting) {
       _androidDiagnoseShown = false;
     }
-  }
-
-  void _showAnnouncementDetail(String body) {
-    if (!mounted) {
-      return;
-    }
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('公告详情'),
-          content: SingleChildScrollView(
-            child: SelectableText(
-              body,
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('关闭'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _openAllNodesSheet() {
@@ -561,13 +545,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<void> _openExternal(String url) async {
-    final u = Uri.tryParse(url);
-    if (u == null) {
-      return;
-    }
-    if (await canLaunchUrl(u)) {
-      await launchUrl(u, mode: LaunchMode.externalApplication);
-    }
+    await ExternalBrowserLauncher.openUrl(url);
   }
 
   Future<void> _showAccessBlockedDialog(PanelUserStats stats) async {
@@ -743,6 +721,20 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final sharedBottomNav = _BottomNavBar(
+      currentIndex: _tabIndex,
+      onTap: _selectTab,
+    );
+    if (_tabIndex == 1) {
+      return AnnouncementPage(bottomNavigationBar: sharedBottomNav);
+    }
+    if (_tabIndex == 2) {
+      return SupportPage(
+        bottomNavigationBar: sharedBottomNav,
+        onBack: () => _selectTab(0),
+      );
+    }
+
     final nodesAsync = ref.watch(nodeListProvider);
     final statsAsync = ref.watch(userStatsProvider);
     final singboxAsync = ref.watch(singboxStateProvider);
@@ -854,7 +846,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         isDark: theme.brightness == Brightness.dark,
         versionLabel: kAppVersionLabel,
       ),
-      bottomNavigationBar: const _BottomNavBar(),
+      bottomNavigationBar: sharedBottomNav,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshAll,
@@ -885,11 +877,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                     announcementLoading: statsAsync.isLoading,
                     onAnnouncementTap: () {
-                      final stats = ref.read(userStatsProvider);
-                      final body = stats.asData?.value.announcementPlain;
-                      if (body != null && body.trim().isNotEmpty) {
-                        _showAnnouncementDetail(body.trim());
-                      }
+                      _selectTab(1);
                     },
                   ),
                 ),
@@ -1774,16 +1762,49 @@ class _AnnouncementCard extends StatelessWidget {
 }
 
 class _BottomNavBar extends StatelessWidget {
-  const _BottomNavBar();
+  const _BottomNavBar({
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget item(IconData icon, bool active) {
-      return Icon(
-        icon,
-        size: 20,
-        color: active ? theme.colorScheme.primary : theme.colorScheme.outline,
+    Widget item({
+      required int index,
+      required IconData icon,
+      required String label,
+    }) {
+      final active = currentIndex == index;
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => onTap(index),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 22,
+                  color: active ? theme.colorScheme.primary : theme.colorScheme.outline,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: active ? theme.colorScheme.primary : theme.colorScheme.outline,
+                    fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -1804,12 +1825,10 @@ class _BottomNavBar extends StatelessWidget {
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            item(Icons.home_rounded, true),
-            item(Icons.public_rounded, false),
-            item(Icons.workspace_premium_rounded, false),
-            item(Icons.notifications_none_rounded, false),
+            item(index: 0, icon: Icons.home_rounded, label: '首页'),
+            item(index: 1, icon: Icons.campaign_outlined, label: '公告'),
+            item(index: 2, icon: Icons.support_agent_rounded, label: '客服'),
           ],
         ),
       ),

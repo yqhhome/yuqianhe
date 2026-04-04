@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/support/external_browser_launcher.dart';
 import '../../../core/ui/brand_logo.dart';
 import '../application/auth_notifier.dart';
 
@@ -29,7 +29,7 @@ class _PasswordRecoveryPageState extends ConsumerState<PasswordRecoveryPage> {
     setState(() => _opening = true);
     try {
       final uri = Uri.parse('$base/password/reset');
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final ok = await ExternalBrowserLauncher.openUrl(uri.toString());
       if (!ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('无法打开重置页面：$uri')),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 const _kBrandName = '宇千鹤';
+const _kBrandLogoAsset = 'assets/images/yuqianhe_logo.png';
 
 class BrandMark extends StatelessWidget {
   const BrandMark({
@@ -12,32 +13,13 @@ class BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.22),
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primaryContainer,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.18),
-            blurRadius: size * 0.18,
-            offset: Offset(0, size * 0.08),
-          ),
-        ],
-      ),
-      child: Icon(
-        Icons.shield_rounded,
-        color: theme.colorScheme.onPrimary,
-        size: size * 0.58,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.22),
+      child: Image.asset(
+        _kBrandLogoAsset,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
       ),
     );
   }
