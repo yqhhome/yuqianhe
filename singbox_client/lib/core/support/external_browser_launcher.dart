@@ -58,6 +58,13 @@ class ExternalBrowserLauncher {
           return true;
         }
       }
+      final edgeExe = _findWindowsEdge();
+      if (edgeExe != null) {
+        final edgeOk = await _runProcess(edgeExe, [uri.toString()]);
+        if (edgeOk) {
+          return true;
+        }
+      }
       return launchUrl(uri, mode: LaunchMode.externalApplication);
     }
 
@@ -82,6 +89,23 @@ class ExternalBrowserLauncher {
         '${Platform.environment['ProgramFiles(x86)']}\\Google\\Chrome\\Application\\chrome.exe',
       if (Platform.environment['LocalAppData'] != null)
         '${Platform.environment['LocalAppData']}\\Google\\Chrome\\Application\\chrome.exe',
+    ];
+    for (final path in candidates) {
+      if (File(path).existsSync()) {
+        return path;
+      }
+    }
+    return null;
+  }
+
+  static String? _findWindowsEdge() {
+    final candidates = <String>[
+      if (Platform.environment['ProgramFiles'] != null)
+        '${Platform.environment['ProgramFiles']}\\Microsoft\\Edge\\Application\\msedge.exe',
+      if (Platform.environment['ProgramFiles(x86)'] != null)
+        '${Platform.environment['ProgramFiles(x86)']}\\Microsoft\\Edge\\Application\\msedge.exe',
+      if (Platform.environment['LocalAppData'] != null)
+        '${Platform.environment['LocalAppData']}\\Microsoft\\Edge\\Application\\msedge.exe',
     ];
     for (final path in candidates) {
       if (File(path).existsSync()) {
