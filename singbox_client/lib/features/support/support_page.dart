@@ -89,16 +89,7 @@ class _SupportPageState extends ConsumerState<SupportPage> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '点击下方按钮，将优先使用 Google Chrome 打开 Crisp 客服聊天；如果设备没有安装 Chrome，则回退系统默认浏览器。',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.outline,
-                          height: 1.6,
-                        ),
-                      ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 18),
                       FilledButton.icon(
                         onPressed: _opening ? null : _openCrisp,
                         icon: const Icon(Icons.open_in_browser_rounded),

@@ -172,14 +172,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                               return ListTile(
                                 leading: Text(flag ?? '🌐', style: const TextStyle(fontSize: 24)),
                                 title: Text(n.name),
-                                subtitle: Text(
-                                  status.$1,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: status.$2),
-                                ),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(status.$3, size: 18, color: status.$2),
+                                    _StatusDot(color: status.$2),
                                     if (sel) ...[
                                       const SizedBox(width: 10),
                                       const Icon(Icons.check_circle, color: primaryTeal),
@@ -231,15 +227,12 @@ class _HomePageState extends ConsumerState<HomePage> {
     required bool hasMeasured,
   }) {
     if (measuredPingMs != null) {
-      return ('延迟：$measuredPingMs ms', Colors.green, Icons.speed_rounded);
-    }
-    if (panelPingMs != null) {
-      return ('延迟：$panelPingMs ms', Colors.lightBlue, Icons.speed_rounded);
+      return ('状态正常', const Color(0xFF28C76F), Icons.circle);
     }
     if (hasMeasured) {
-      return ('延迟：不可达', Colors.redAccent, Icons.error_outline);
+      return ('连通失败', const Color(0xFFFF5B5B), Icons.circle);
     }
-    return ('延迟：待检测', Colors.orange, Icons.schedule);
+    return ('测速中', const Color(0xFFFFC542), Icons.circle);
   }
 
   String _fmtSpeed(double bytesPerSec) {
@@ -982,17 +975,9 @@ class _HeaderBar extends StatelessWidget {
                 ],
               ),
               IgnorePointer(
-                child: RichText(
-                  text: TextSpan(
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                    children: [
-                      const TextSpan(text: '宇千鹤'),
-                      TextSpan(
-                        text: 'VPN',
-                        style: TextStyle(color: theme.colorScheme.primary),
-                      ),
-                    ],
-                  ),
+                child: Text(
+                  '宇千鹤',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -1086,7 +1071,7 @@ class _MainMenuDrawer extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '版本号 $versionLabel',
+                  versionLabel,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.outline,
                   ),
@@ -1154,41 +1139,7 @@ class _DashboardPanel extends StatefulWidget {
   State<_DashboardPanel> createState() => _DashboardPanelState();
 }
 
-class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    );
-    _syncPulse();
-  }
-
-  @override
-  void didUpdateWidget(covariant _DashboardPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.phase != widget.phase) {
-      _syncPulse();
-    }
-  }
-
-  void _syncPulse() {
-    if (widget.phase == SingboxRunPhase.running) {
-      _pulseController.repeat(reverse: true);
-    } else {
-      _pulseController.stop();
-      _pulseController.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
+class _DashboardPanelState extends State<_DashboardPanel> {
 
   @override
   Widget build(BuildContext context) {
@@ -1203,7 +1154,7 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
             ? '连接失败'
             : '未连接';
     final statusColor = running
-        ? const Color(0xFF4F8CFF)
+        ? const Color(0xFF28C76F)
         : widget.phase == SingboxRunPhase.error
             ? theme.colorScheme.error
             : theme.colorScheme.outline;
@@ -1212,10 +1163,10 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
       elevation: 0,
       color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(
           children: [
             Row(
@@ -1237,51 +1188,32 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, _) {
-                final pulse = _pulseController.value;
-                final outerSize = widget.narrow ? 210.0 : 240.0;
-                final innerSize = widget.narrow ? 168.0 : 188.0;
-                final buttonSize = widget.narrow ? 96.0 : 110.0;
-
+            const SizedBox(height: 12),
+            Builder(
+              builder: (context) {
+                final outerSize = widget.narrow ? 188.0 : 208.0;
+                final innerSize = widget.narrow ? 146.0 : 164.0;
+                final buttonSize = widget.narrow ? 77.0 : 88.0;
                 return SizedBox(
                   width: outerSize,
                   height: outerSize,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      if (running)
-                        Transform.scale(
-                          scale: 1.0 + pulse * 0.16,
-                          child: Container(
-                            width: outerSize,
-                            height: outerSize,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: widget.primaryTeal.withValues(alpha: 0.08 - pulse * 0.04),
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          width: outerSize,
-                          height: outerSize,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: widget.primaryTeal.withValues(alpha: 0.08),
-                          ),
+                      Container(
+                        width: outerSize,
+                        height: outerSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.primaryTeal.withValues(alpha: 0.08),
                         ),
-                      Transform.scale(
-                        scale: running ? 0.98 + pulse * 0.06 : 1,
-                        child: Container(
-                          width: innerSize,
-                          height: innerSize,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: widget.primaryTeal.withValues(alpha: running ? 0.16 : 0.12),
-                          ),
+                      ),
+                      Container(
+                        width: innerSize,
+                        height: innerSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.primaryTeal.withValues(alpha: running ? 0.16 : 0.12),
                         ),
                       ),
                       Material(
@@ -1289,32 +1221,29 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                         child: InkWell(
                           customBorder: const CircleBorder(),
                           onTap: busy ? null : widget.onPower,
-                          child: Transform.scale(
-                            scale: running ? 1 + pulse * 0.035 : 1,
-                            child: Ink(
-                              width: buttonSize,
-                              height: buttonSize,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: running
-                                      ? [const Color(0xFF69B3FF), const Color(0xFF6A5BFF)]
-                                      : [const Color(0xFFFF6E6E), const Color(0xFFE53935)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
+                          child: Ink(
+                            width: buttonSize,
+                            height: buttonSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: running
+                                    ? [const Color(0xFF69B3FF), const Color(0xFF6A5BFF)]
+                                    : [const Color(0xFFFF6E6E), const Color(0xFFE53935)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              child: busy
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(28),
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : const Icon(
-                                      Icons.power_settings_new_rounded,
-                                      size: 42,
-                                      color: Colors.white,
-                                    ),
                             ),
+                            child: busy
+                                ? const Padding(
+                                    padding: EdgeInsets.all(20),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(
+                                    Icons.power_settings_new_rounded,
+                                    size: 34,
+                                    color: Colors.white,
+                                  ),
                           ),
                         ),
                       ),
@@ -1323,7 +1252,7 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                 );
               },
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -1356,7 +1285,7 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                 ],
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -1407,7 +1336,7 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
@@ -1447,7 +1376,7 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                 onTap: widget.onOpenNodes,
                 borderRadius: BorderRadius.circular(14),
                 child: Ink(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(14),
@@ -1468,15 +1397,20 @@ class _DashboardPanelState extends State<_DashboardPanel> with SingleTickerProvi
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              widget.currentNodeStatus.$1,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: widget.currentNodeStatus.$2,
-                                fontFeatures: const [FontFeature.tabularFigures()],
-                              ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                _StatusDot(color: widget.currentNodeStatus.$2),
+                                const SizedBox(width: 6),
+                                Text(
+                                  widget.currentNodeStatus.$1,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: widget.currentNodeStatus.$2,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -1631,6 +1565,24 @@ class _CompactSwitch extends StatelessWidget {
         value: value,
         onChanged: onChanged,
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+}
+
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
       ),
     );
   }

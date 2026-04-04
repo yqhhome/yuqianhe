@@ -29,6 +29,17 @@ if [[ -z "$PYTHON_BIN" ]]; then
   exit 3
 fi
 
+CLIENT_BUILD_SEQ="${CLIENT_BUILD_SEQ:-$("$PYTHON_BIN" - <<'PY'
+from pathlib import Path
+import re
+
+text = Path("pubspec.yaml").read_text(encoding="utf-8")
+match = re.search(r"^version:\s+[^\+]+\+(\d+)\s*$", text, re.M)
+print(match.group(1) if match else "1")
+PY
+)}"
+BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}版本}"
+
 WINDOWS_ARCH="${WINDOWS_ARCH:-amd64}"
 DIST_DIR="$ROOT/dist/windows"
 WORK_DIR="$ROOT/.build-tools/singbox-windows"
@@ -77,7 +88,7 @@ echo "==> flutter clean"
 echo "==> flutter pub get"
 "$FLUTTER_BIN" pub get
 echo "==> 构建 Windows Release"
-"$FLUTTER_BIN" build windows --release
+"$FLUTTER_BIN" build windows --release "--dart-define=CLIENT_BUILD_LABEL=${BUILD_LABEL}"
 
 BUNDLE_DIR="$ROOT/build/windows/x64/runner/Release"
 APP_DIR="$DIST_DIR/singbox-client-windows-x64"

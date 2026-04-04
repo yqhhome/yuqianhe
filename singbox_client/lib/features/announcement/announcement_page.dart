@@ -72,23 +72,11 @@ class _AnnouncementHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final baseUrl = ref.watch(panelBaseUrlProvider);
-    final host = baseUrl == null || baseUrl.isEmpty ? '未设置面板地址' : Uri.parse(baseUrl).host;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '公告',
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '当前仅显示面板最新一条公告，来源：$host',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline),
-          ),
-        ],
+      child: Text(
+        '公告',
+        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
       ),
     );
   }

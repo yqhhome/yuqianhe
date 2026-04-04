@@ -32,6 +32,17 @@ mkdir -p "$DIST_DIR" "$SRC_DIR" "$BIN_DIR"
 CACHE_BIN_DIR="${HOME}/.cache/singbox-client"
 mkdir -p "$CACHE_BIN_DIR"
 
+CLIENT_BUILD_SEQ="${CLIENT_BUILD_SEQ:-$(python3 - <<'PY'
+from pathlib import Path
+import re
+
+text = Path("pubspec.yaml").read_text(encoding="utf-8")
+match = re.search(r"^version:\s+[^\+]+\+(\d+)\s*$", text, re.M)
+print(match.group(1) if match else "1")
+PY
+)}"
+BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}版本}"
+
 resolve_version() {
   if [[ -n "${SINGBOX_VERSION:-}" ]]; then
     echo "${SINGBOX_VERSION#v}"
@@ -147,7 +158,7 @@ echo "==> flutter pub get"
 echo "==> 构建 Apple Silicon 包"
 SINGBOX_PATH="$BIN_DIR/sing-box-arm64" \
 BUNDLE_SINGBOX_REQUIRED=1 \
-"$FLUTTER_BIN" build macos --release
+"$FLUTTER_BIN" build macos --release "--dart-define=CLIENT_BUILD_LABEL=${BUILD_LABEL}"
 
 ARM_APP_SRC="$(pick_app_from_dir "$ROOT/build/macos/Build/Products/Release")"
 ARM_APP_DST="$DIST_DIR/${APP_NAME}-arm64.app"
@@ -157,7 +168,7 @@ zip_app "$ARM_APP_DST" "$DIST_DIR/${APP_NAME}-arm64.zip"
 echo "==> 构建 Intel 包"
 SINGBOX_PATH="$BIN_DIR/sing-box-amd64" \
 BUNDLE_SINGBOX_REQUIRED=1 \
-"$FLUTTER_BIN" build macos --release --config-only
+"$FLUTTER_BIN" build macos --release --config-only "--dart-define=CLIENT_BUILD_LABEL=${BUILD_LABEL}"
 
 SINGBOX_PATH="$BIN_DIR/sing-box-amd64" \
 BUNDLE_SINGBOX_REQUIRED=1 \
@@ -180,7 +191,7 @@ zip_app "$INTEL_APP_DST" "$DIST_DIR/${APP_NAME}-x86_64.zip"
 echo "==> 构建 Universal 包"
 SINGBOX_PATH="$BIN_DIR/sing-box-universal" \
 BUNDLE_SINGBOX_REQUIRED=1 \
-"$FLUTTER_BIN" build macos --release --config-only
+"$FLUTTER_BIN" build macos --release --config-only "--dart-define=CLIENT_BUILD_LABEL=${BUILD_LABEL}"
 
 SINGBOX_PATH="$BIN_DIR/sing-box-universal" \
 BUNDLE_SINGBOX_REQUIRED=1 \
