@@ -11,7 +11,7 @@ LIBS_DIR="$ROOT_DIR/android/app/libs"
 JNI_DIR="$ROOT_DIR/android/app/src/main/jniLibs"
 WORK_DIR="$ROOT_DIR/.build-tools/android-deps"
 CACHE_DIR="$WORK_DIR/cache/v${SINGBOX_VERSION}"
-ANDROID_ABIS="${ANDROID_ABIS:-armeabi-v7a,arm64-v8a,x86_64}"
+ANDROID_ABIS="${ANDROID_ABIS:-armeabi-v7a,arm64-v8a}"
 
 mkdir -p "$LIBS_DIR" "$JNI_DIR" "$CACHE_DIR"
 

@@ -38,29 +38,14 @@ echo "==> flutter clean"
 echo "==> flutter pub get"
 "$FLUTTER_BIN" pub get
 
-echo "==> 构建 Android App Bundle"
-"$FLUTTER_BIN" build appbundle --release
-cp -f \
-  "$ROOT/build/app/outputs/bundle/release/app-release.aab" \
-  "$DIST_DIR/singbox-client-release.aab"
-
-echo "==> 构建 Android 通用 APK"
-"$FLUTTER_BIN" build apk --release --target-platform android-arm,android-arm64,android-x64
-cp -f \
-  "$ROOT/build/app/outputs/flutter-apk/app-release.apk" \
-  "$DIST_DIR/singbox-client-universal.apk"
-
 echo "==> 构建 Android 分 ABI APK"
-"$FLUTTER_BIN" build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64
+"$FLUTTER_BIN" build apk --release --split-per-abi --target-platform android-arm,android-arm64
 cp -f \
   "$ROOT/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" \
   "$DIST_DIR/singbox-client-armeabi-v7a.apk"
 cp -f \
   "$ROOT/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" \
   "$DIST_DIR/singbox-client-arm64-v8a.apk"
-cp -f \
-  "$ROOT/build/app/outputs/flutter-apk/app-x86_64-release.apk" \
-  "$DIST_DIR/singbox-client-x86_64.apk"
 
 "$PYTHON_BIN" - <<'PY'
 import pathlib
@@ -68,21 +53,13 @@ import zipfile
 
 root = pathlib.Path("dist/android")
 apk_names = [
-    "singbox-client-universal.apk",
     "singbox-client-armeabi-v7a.apk",
     "singbox-client-arm64-v8a.apk",
-    "singbox-client-x86_64.apk",
 ]
 
 expected = {
-    "singbox-client-universal.apk": [
-        "lib/armeabi-v7a/libsing-box.so",
-        "lib/arm64-v8a/libsing-box.so",
-        "lib/x86_64/libsing-box.so",
-    ],
     "singbox-client-armeabi-v7a.apk": ["lib/armeabi-v7a/libsing-box.so"],
     "singbox-client-arm64-v8a.apk": ["lib/arm64-v8a/libsing-box.so"],
-    "singbox-client-x86_64.apk": ["lib/x86_64/libsing-box.so"],
 }
 
 for name in apk_names:
@@ -94,10 +71,6 @@ for name in apk_names:
     for lib_name in expected[name]:
         if lib_name not in names:
             raise SystemExit(f"{name} missing {lib_name}")
-
-aab = root / "singbox-client-release.aab"
-if not aab.exists():
-    raise SystemExit(f"missing artifact: {aab}")
 
 print("Android artifacts verified.")
 PY
