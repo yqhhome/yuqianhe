@@ -1,7 +1,7 @@
 import Cocoa
 import FlutterMacOS
 
-class MainFlutterWindow: NSWindow {
+class MainFlutterWindow: NSWindow, NSWindowDelegate {
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let mobileSize = NSSize(width: 390, height: 844)
@@ -15,9 +15,18 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
     self.minSize = mobileSize
     self.maxSize = mobileSize
+    self.styleMask.remove(.resizable)
+    self.delegate = self
+    self.standardWindowButton(.zoomButton)?.isHidden = true
+    self.standardWindowButton(.zoomButton)?.isEnabled = false
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
     super.awakeFromNib()
+  }
+
+  func windowShouldClose(_ sender: NSWindow) -> Bool {
+    sender.miniaturize(nil)
+    return false
   }
 }

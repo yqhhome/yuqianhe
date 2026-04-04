@@ -134,10 +134,15 @@ bool Win32Window::Create(const std::wstring& title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
+  const DWORD window_style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+  RECT window_rect = {
+      0, 0, Scale(size.width, scale_factor), Scale(size.height, scale_factor)};
+  AdjustWindowRect(&window_rect, window_style, FALSE);
+
   HWND window = CreateWindow(
-      window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
+      window_class, title.c_str(), window_style,
       Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+      window_rect.right - window_rect.left, window_rect.bottom - window_rect.top,
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {
@@ -179,6 +184,10 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_CLOSE:
+      ShowWindow(hwnd, SW_MINIMIZE);
+      return 0;
+
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();

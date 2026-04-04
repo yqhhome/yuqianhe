@@ -202,7 +202,7 @@ class PanelUserStats extends Equatable {
     if (d <= 0) {
       return '已过期';
     }
-    return '剩余 $d 天';
+    return '$d 天';
   }
 
   static String formatBytes(int bytes) {
