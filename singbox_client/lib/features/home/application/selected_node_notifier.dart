@@ -35,10 +35,12 @@ class SelectedNodeIdNotifier extends Notifier<int?> {
       return;
     }
     final cur = state;
-    if (cur != null && nodes.any((n) => n.id == cur)) {
+    final currentExists = cur != null && nodes.any((n) => n.id == cur);
+    if (currentExists && (pingMap == null || pingMap.isEmpty)) {
       return;
     }
     if (pingMap == null || pingMap.isEmpty) {
+      await set(nodes[_random.nextInt(nodes.length)].id);
       return;
     }
     final reachable = <PanelNode>[
@@ -46,6 +48,9 @@ class SelectedNodeIdNotifier extends Notifier<int?> {
         if ((pingMap[node.id] ?? NodePingNotifier.pending) >= 0) node,
     ];
     if (reachable.isNotEmpty) {
+      if (currentExists && reachable.any((node) => node.id == cur)) {
+        return;
+      }
       await set(reachable[_random.nextInt(reachable.length)].id);
       return;
     }
