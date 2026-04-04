@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../auth/application/auth_notifier.dart';
 import '../../core/api/api_paths.dart';
 import '../../data/datasources/user_remote_datasource.dart';
+import '../home/application/user_stats_notifier.dart';
 
 final announcementListProvider = FutureProvider<List<AnnouncementListItem>>((
   ref,
