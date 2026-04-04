@@ -41,7 +41,7 @@ match = re.search(r"^version:\s+[^\+]+\+(\d+)\s*$", text, re.M)
 print(match.group(1) if match else "1")
 PY
 )}"
-BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}版本}"
+BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}}"
 
 resolve_version() {
   if [[ -n "${SINGBOX_VERSION:-}" ]]; then

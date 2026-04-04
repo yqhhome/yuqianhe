@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/support/external_browser_launcher.dart';
 import '../../../core/settings/panel_url_hints.dart';
 import '../../../core/ui/brand_logo.dart';
 import '../../../data/models/login_request.dart';
 import '../application/auth_notifier.dart';
 import '../application/auth_state.dart';
 import 'password_recovery_page.dart';
-import 'register_page.dart';
 
 /// First screen: email + password + login / register. Server URL is in ⚙️ only.
 class LoginPage extends ConsumerStatefulWidget {
@@ -157,7 +157,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  void _goRegister() {
+  Future<void> _goRegister() async {
     final base = ref.read(panelBaseUrlProvider);
     if (base == null || base.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -165,9 +165,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
       return;
     }
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => const RegisterPage()),
-    );
+    final ok = await ExternalBrowserLauncher.openUrl('${Uri.parse(base).origin}/auth/register');
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('无法打开注册页面')),
+      );
+    }
   }
 
   void _goPasswordRecovery() {

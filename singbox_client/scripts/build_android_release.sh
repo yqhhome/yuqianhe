@@ -36,7 +36,8 @@ match = re.search(r"^version:\s+[^\+]+\+(\d+)\s*$", text, re.M)
 print(match.group(1) if match else "1")
 PY
 )}"
-BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}版本}"
+BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}}"
+BUILD_LABEL="${CLIENT_BUILD_LABEL:-V${CLIENT_BUILD_SEQ}}"
 
 DIST_DIR="$ROOT/dist/android"
 mkdir -p "$DIST_DIR"

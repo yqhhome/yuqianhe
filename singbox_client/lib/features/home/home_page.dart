@@ -165,7 +165,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                               final measured = pingMap[n.id];
                               final hasMeasured = pingMap.containsKey(n.id);
                               final status = _nodeLatencyLabel(
-                                panelPingMs: n.pingMs,
                                 measuredPingMs: measured,
                                 hasMeasured: hasMeasured,
                               );
@@ -222,12 +221,14 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   (String, Color, IconData) _nodeLatencyLabel({
-    required int? panelPingMs,
     required int? measuredPingMs,
     required bool hasMeasured,
   }) {
-    if (measuredPingMs != null) {
+    if (measuredPingMs != null && measuredPingMs >= 0) {
       return ('状态正常', const Color(0xFF28C76F), Icons.circle);
+    }
+    if (measuredPingMs == NodePingNotifier.pending) {
+      return ('测速中', const Color(0xFFFFC542), Icons.circle);
     }
     if (hasMeasured) {
       return ('连通失败', const Color(0xFFFF5B5B), Icons.circle);
@@ -601,7 +602,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${stats.accessBlockedReason}，请前往官网充值购买流量套餐或续费后再使用。'),
+          content: Text(
+            stopIfRunning && (phase == SingboxRunPhase.running || phase == SingboxRunPhase.starting)
+                ? '${stats.accessBlockedReason}，已自动断开连接。请前往官网充值购买流量套餐或续费后再使用。'
+                : '${stats.accessBlockedReason}，请前往官网充值购买流量套餐或续费后再使用。',
+          ),
           duration: const Duration(seconds: 6),
         ),
       );
@@ -740,8 +745,16 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     ref.listen(nodeListProvider, (prev, next) {
       next.whenData((nodes) {
-        unawaited(ref.read(selectedNodeIdProvider.notifier).ensureDefault(nodes));
+        final pingMap = ref.read(nodePingProvider);
+        unawaited(ref.read(selectedNodeIdProvider.notifier).ensureDefault(nodes, pingMap: pingMap));
       });
+    });
+    ref.listen<Map<int, int?>>(nodePingProvider, (prev, next) {
+      final nodes = ref.read(nodeListProvider).valueOrNull;
+      if (nodes == null || nodes.isEmpty) {
+        return;
+      }
+      unawaited(ref.read(selectedNodeIdProvider.notifier).ensureDefault(nodes, pingMap: next));
     });
     ref.listen(singboxStateProvider, (prev, next) {
       next.whenData((s) {
@@ -808,7 +821,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     final currentNodeStatus = selectedNode == null
         ? ('未选择节点', theme.colorScheme.outline, Icons.help_outline)
         : _nodeLatencyLabel(
-            panelPingMs: selectedNode.pingMs,
             measuredPingMs: pingMap[selectedNode.id],
             hasMeasured: pingMap.containsKey(selectedNode.id),
           );
@@ -833,7 +845,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       drawer: _MainMenuDrawer(
         onTheme: _cycleTheme,
         onOfficial: officialAction,
-        onSettings: _showSettings,
         onPlans: plansAction,
         onLogout: _logout,
         isDark: theme.brightness == Brightness.dark,
@@ -1004,7 +1015,6 @@ class _MainMenuDrawer extends StatelessWidget {
   const _MainMenuDrawer({
     required this.onTheme,
     required this.onOfficial,
-    required this.onSettings,
     required this.onPlans,
     required this.onLogout,
     required this.isDark,
@@ -1013,7 +1023,6 @@ class _MainMenuDrawer extends StatelessWidget {
 
   final VoidCallback onTheme;
   final VoidCallback onOfficial;
-  final VoidCallback onSettings;
   final VoidCallback onPlans;
   final VoidCallback onLogout;
   final bool isDark;
@@ -1054,11 +1063,6 @@ class _MainMenuDrawer extends StatelessWidget {
               leading: const Icon(Icons.language_outlined),
               title: const Text('官网'),
               onTap: () => tap(onOfficial),
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('设置'),
-              onTap: () => tap(onSettings),
             ),
             ListTile(
               leading: const Icon(Icons.arrow_upward_rounded),
@@ -1276,7 +1280,7 @@ class _DashboardPanelState extends State<_DashboardPanel> {
                   ),
                   Expanded(
                     child: _UsageStatTile(
-                      label: '剩余天数',
+                      label: '天数',
                       value: widget.stats.remainingDaysLabel(),
                       icon: Icons.calendar_today_rounded,
                       color: const Color(0xFF5B9DFF),

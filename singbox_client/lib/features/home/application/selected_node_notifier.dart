@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/panel_node.dart';
 import '../../auth/application/auth_notifier.dart';
+import 'node_ping_notifier.dart';
 import 'node_list_notifier.dart';
 
 const _kSelectedNodeId = 'home_selected_node_id';
@@ -9,6 +12,8 @@ const _kSelectedNodeId = 'home_selected_node_id';
 final selectedNodeIdProvider = NotifierProvider<SelectedNodeIdNotifier, int?>(SelectedNodeIdNotifier.new);
 
 class SelectedNodeIdNotifier extends Notifier<int?> {
+  final Random _random = Random();
+
   @override
   int? build() {
     return ref.read(appServicesProvider).prefs.getInt(_kSelectedNodeId);
@@ -24,8 +29,8 @@ class SelectedNodeIdNotifier extends Notifier<int?> {
     state = id;
   }
 
-  /// 节点列表到达后：无选中时默认第一个。
-  Future<void> ensureDefault(List<PanelNode> nodes) async {
+  /// 节点列表到达后：无选中时优先随机选择一个连通性正常的节点。
+  Future<void> ensureDefault(List<PanelNode> nodes, {Map<int, int?>? pingMap}) async {
     if (nodes.isEmpty) {
       return;
     }
@@ -33,7 +38,19 @@ class SelectedNodeIdNotifier extends Notifier<int?> {
     if (cur != null && nodes.any((n) => n.id == cur)) {
       return;
     }
-    await set(nodes.first.id);
+    final reachable = <PanelNode>[
+      if (pingMap != null)
+        for (final node in nodes)
+          if ((pingMap[node.id] ?? NodePingNotifier.pending) >= 0) node,
+    ];
+    if (reachable.isNotEmpty) {
+      await set(reachable[_random.nextInt(reachable.length)].id);
+      return;
+    }
+    final allMeasured = pingMap != null && pingMap.length >= nodes.length;
+    if (allMeasured) {
+      await set(nodes[_random.nextInt(nodes.length)].id);
+    }
   }
 }
 
